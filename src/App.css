@@ -20,21 +20,21 @@
 }
 
 .app.dark {
-  --bg: #0f1117;
-  --bg2: #1a1d27;
-  --bg3: #242736;
-  --border: rgba(255,255,255,0.08);
-  --border2: rgba(255,255,255,0.12);
-  --text: #e8e9f0;
-  --text2: #9499b0;
-  --text3: #5d6380;
-  --card: #1a1d27;
-  --input-bg: #242736;
-  --sidebar: #13151f;
-  --topbar: #13151f;
-  --accent: #4d9fe0;
-  --accent-hover: #378ADD;
-  --chart-grid: rgba(255,255,255,0.06);
+  --bg: #111111;
+  --bg2: #1a1a1a;
+  --bg3: #222222;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.10);
+  --text: #e0e0e0;
+  --text2: #888888;
+  --text3: #555555;
+  --card: #1a1a1a;
+  --input-bg: #222222;
+  --sidebar: #0e0e0e;
+  --topbar: #0e0e0e;
+  --accent: #888888;
+  --accent-hover: #aaaaaa;
+  --chart-grid: rgba(255,255,255,0.05);
 }
 
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; }

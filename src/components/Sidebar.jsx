@@ -22,9 +22,9 @@ export default function Sidebar({ page, setPage, darkMode, setDarkMode }) {
       <div className="logo">
         <div className="logo-name">
           <i className="ti ti-building-factory logo-icon" aria-hidden="true" />
-          Prod. Monitor
+          Masslam Monitoring
         </div>
-        <div className="logo-sub">Quality dashboard</div>
+        <div className="logo-sub">Dharvin's Dashboard</div>
       </div>
 
       {navItems.map(function(item, idx) {

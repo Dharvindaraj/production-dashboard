@@ -41,7 +41,7 @@ export const OT_RATE_2_0  = 19.23 * 2.0;
 export const OT_RATE_3_0  = 19.23 * 3.0;
 
 export const PAGE_TITLES = {
-  overview:   'Overview',
+  overview:   'Masslam Dashboard',
   entry:      'Daily entry',
   stations:   'Stations',
   downtime:   'Downtime',
