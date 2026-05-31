@@ -166,6 +166,7 @@ export async function savePersonalOT(date, entry) {
     scan_in: entry.scanIn,
     scan_out: entry.scanOut,
     ot_hours: entry.otHours,
+    ot_amount: entry.otAmount,
     is_weekend: entry.isWeekend,
     notes: entry.notes,
   }, { onConflict: 'entry_date' });

@@ -30,10 +30,15 @@ export const SHIFT_OPTIONS = [
 export const N_STN = 17;
 
 export const ETCH_TARGET = 1.6;
-export const ETCH_UCL = 1.75;
-export const ETCH_LCL = 1.45;
-export const ETCH_USL = 1.8;
-export const ETCH_LSL = 1.4;
+export const ETCH_UCL    = 1.75;
+export const ETCH_LCL    = 1.45;
+export const ETCH_USL    = 1.8;
+export const ETCH_LSL    = 1.4;
+
+export const OT_BASE_RATE = 19.23;
+export const OT_RATE_1_5  = 19.23 * 1.5;
+export const OT_RATE_2_0  = 19.23 * 2.0;
+export const OT_RATE_3_0  = 19.23 * 3.0;
 
 export const PAGE_TITLES = {
   overview:   'Overview',
@@ -46,6 +51,7 @@ export const PAGE_TITLES = {
   etchrate:   'Etch rate SPC',
   personalot: 'Personal OT',
   history:    'History log',
+  settings:   'Settings',
 };
 
 export function tod(d) {
@@ -70,26 +76,63 @@ export function currentMonth() {
 }
 
 export function isWeekend(dateStr) {
-  const d = new Date(dateStr);
-  return d.getDay() === 0 || d.getDay() === 6;
+  const d = new Date(dateStr).getDay();
+  return d === 0 || d === 6;
 }
 
-export function calcOT(scanIn, scanOut, dateStr) {
-  if (!scanIn || !scanOut) return 0;
-  const weekend = isWeekend(dateStr);
-  const inParts = scanIn.split(':');
-  const outParts = scanOut.split(':');
-  const inH = parseInt(inParts[0]);
-  const inM = parseInt(inParts[1]);
-  const outH = parseInt(outParts[0]);
-  const outM = parseInt(outParts[1]);
-  const inMins = inH * 60 + inM;
-  let outMins = outH * 60 + outM;
+export function calcOT(scanIn, scanOut, dateStr, isPublicHoliday) {
+  if (!scanIn || !scanOut) return { hours: 0, amount: 0, breakdown: 'No scan data' };
+
+  const toMins = function(t) {
+    const p = t.split(':');
+    return parseInt(p[0]) * 60 + parseInt(p[1]);
+  };
+
+  const day    = new Date(dateStr).getDay();
+  const isSat  = day === 6;
+  const isSun  = day === 0;
+
+  const inMins  = toMins(scanIn);
+  let outMins   = toMins(scanOut);
   if (outMins < inMins) outMins += 24 * 60;
-  const totalMins = outMins - inMins;
-  if (weekend) return parseFloat((totalMins / 60).toFixed(2));
-  const otStart = 18 * 60 + 30;
-  if (outMins <= otStart) return 0;
-  const otMins = outMins - Math.max(inMins, otStart);
-  return parseFloat((otMins / 60).toFixed(2));
+
+  const rawHours = (outMins - inMins) / 60;
+  let otHours = 0;
+  let amount  = 0;
+  let breakdown = '';
+
+  if (isPublicHoliday) {
+    const worked  = Math.max(0, rawHours - 1);
+    const first8  = Math.min(worked, 8);
+    const after8  = Math.max(0, worked - 8);
+    otHours   = worked;
+    amount    = (first8 * OT_RATE_2_0) + (after8 * OT_RATE_3_0);
+    breakdown = first8.toFixed(2) + 'h x RM' + OT_RATE_2_0.toFixed(3);
+    if (after8 > 0) breakdown += ' + ' + after8.toFixed(2) + 'h x RM' + OT_RATE_3_0.toFixed(3);
+  } else if (isSun) {
+    const worked = Math.max(0, rawHours - 1);
+    otHours  = worked;
+    amount   = worked * OT_RATE_2_0;
+    breakdown = worked.toFixed(2) + 'h x RM' + OT_RATE_2_0.toFixed(3);
+  } else if (isSat) {
+    const worked = Math.max(0, rawHours - 1);
+    otHours  = worked;
+    amount   = worked * OT_RATE_1_5;
+    breakdown = worked.toFixed(2) + 'h x RM' + OT_RATE_1_5.toFixed(3);
+  } else {
+    const otStart = toMins('18:30');
+    if (outMins <= otStart) {
+      otHours = 0; amount = 0; breakdown = 'No OT';
+    } else {
+      otHours  = (outMins - otStart) / 60;
+      amount   = otHours * OT_RATE_1_5;
+      breakdown = otHours.toFixed(2) + 'h x RM' + OT_RATE_1_5.toFixed(3);
+    }
+  }
+
+  return {
+    hours:     parseFloat(otHours.toFixed(2)),
+    amount:    parseFloat(amount.toFixed(2)),
+    breakdown: breakdown
+  };
 }

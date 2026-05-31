@@ -84,7 +84,7 @@ export default function CapacityPage({ toast }) {
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
           <div>
             <div className="card-title">Machine capacity settings</div>
-            <div className="card-sub">Set m2/hr per station. Default PIN to unlock: 1234</div>
+            <div className="card-sub">Set m2/day capacity per station (24 hours). Default PIN to unlock: 1234</div>
           </div>
           <div style={{display:'flex',gap:8,alignItems:'center'}}>
             {showPin ? (
@@ -111,7 +111,7 @@ export default function CapacityPage({ toast }) {
         </div>
         <div className="divider" />
         <div style={{fontSize:12,color:'var(--text2)'}}>
-          Total capacity: <strong style={{color:'var(--text)'}}>{totalCap.toFixed(1)} m2/hr</strong>
+          Total capacity: <strong style={{color:'var(--text)'}}>{totalCap.toFixed(1)} m2/day total capacity</strong>
         </div>
       </div>
 
@@ -122,7 +122,7 @@ export default function CapacityPage({ toast }) {
               <tr>
                 <th>#</th>
                 <th>Station</th>
-                <th>Capacity (m2/hr)</th>
+                <th>Capacity (m2/day)</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
