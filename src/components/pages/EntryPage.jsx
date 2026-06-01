@@ -112,6 +112,13 @@ export default function EntryPage({ globalDate, onSave, toast }) {
     toast('All set to Management Cut OT');
   }
 
+  function setAllPublicHoliday() {
+    setOps(ops.map(function(o) {
+      return Object.assign({}, o, { shift: 'absent' });
+    }));
+    toast('All set to Public Holiday (Absent)');
+  }
+
   function setAllNormal() {
     setOps(ops.map(function(o) {
       return Object.assign({}, o, { shift: o.shift === 'absent' ? 'absent' : 'day' });
@@ -224,6 +231,9 @@ export default function EntryPage({ globalDate, onSave, toast }) {
             <button className="btn-ghost" onClick={setAllNormal} style={{fontSize:11}}>All normal</button>
             <button className="btn-primary" onClick={setAllMgmtCut} style={{fontSize:11,background:'#185FA5'}}>
               All mgmt cut OT
+            </button>
+            <button className="btn-primary" onClick={setAllPublicHoliday} style={{fontSize:11,background:'#E24B4A'}}>
+              All public holiday
             </button>
           </div>
         </div>
