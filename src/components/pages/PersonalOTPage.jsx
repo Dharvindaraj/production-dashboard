@@ -82,6 +82,7 @@ export default function PersonalOTPage({ globalDate, toast, darkMode }) {
     const dw = new Date(d.entry_date).getDay();
     return !d.is_public_holiday && dw!==0 && dw!==6 && (parseFloat(d.ot_hours)||0)>0;
   }).length;
+  const phOTDays = history.filter(function(d){ return d.is_public_holiday && (parseFloat(d.ot_hours)||0)>0; }).length;
 
   const chartData = {
     labels: history.map(function(d){ return d.entry_date.slice(5); }),
@@ -100,6 +101,14 @@ export default function PersonalOTPage({ globalDate, toast, darkMode }) {
       }
     ]
   };
+
+  function getLogDayType(d) {
+    if (d.is_public_holiday) return { label: 'PH', cls: 'pill-red' };
+    const dw = new Date(d.entry_date).getDay();
+    if (dw===0) return { label: 'Sunday', cls: 'pill-blue' };
+    if (dw===6) return { label: 'Saturday', cls: 'pill-amber' };
+    return { label: 'Weekday', cls: 'pill-green' };
+  }
 
   if (!unlocked) return <PasswordLock title="My OT" subtitle="Enter password to access your personal OT records" onUnlock={function(){setUnlocked(true);}} />;
 
@@ -192,7 +201,7 @@ export default function PersonalOTPage({ globalDate, toast, darkMode }) {
           <div className="kpi-icon" style={{background:'#FCEBEB',color:'#A32D2D'}}><i className="ti ti-calendar-event" aria-hidden="true" /></div>
           <div className="kpi-label">Public holidays</div>
           <div className="kpi-val">{phDays}</div>
-          <div className="kpi-footer text-muted">worked</div>
+          <div className="kpi-footer text-muted">{phOTDays} with OT</div>
           <div className="kpi-bar" style={{background:'#E24B4A'}} />
         </div>
       </div>
@@ -262,7 +271,7 @@ export default function PersonalOTPage({ globalDate, toast, darkMode }) {
                       <td style={{fontWeight:500,color:(parseFloat(d.ot_amount)||0)>0?'#3B6D11':'var(--text2)'}}>
                         {(parseFloat(d.ot_amount)||0)>0?'RM '+(parseFloat(d.ot_amount)).toFixed(2):'—'}
                       </td>
-                      <td><span className={'pill '+typeCls}>{typeLabel}</span></td>
+                      <td>{(function(){ var t=getLogDayType(d); return <span className={'pill '+t.cls}>{t.label}</span>; })()}</td>
                       <td style={{color:'var(--text2)',fontSize:11}}>{d.notes||'—'}</td>
                     </tr>
                   );
