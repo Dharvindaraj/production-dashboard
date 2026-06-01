@@ -9,21 +9,10 @@ const STATUS_COLORS = {
   'Waiting For Scrap':  { bg: '#FCEBEB', color: '#791F1F' },
 };
 
-function getDaysOverdue(deliveryDate) {
-  if (!deliveryDate) return 0;
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const due = new Date(deliveryDate);
-  due.setHours(0,0,0,0);
-  return Math.floor((today - due) / (1000*60*60*24));
-}
-
-function getOverdueStyle(days) {
-  if (days > 3)  return { bg: '#791F1F', color: '#fff', label: days + 'd overdue' };
-  if (days > 0)  return { bg: '#E24B4A', color: '#fff', label: days + 'd overdue' };
-  if (days === 0) return { bg: '#EF9F27', color: '#fff', label: 'Due today' };
-  if (days >= -2) return { bg: '#FAEEDA', color: '#633806', label: 'Due in ' + Math.abs(days) + 'd' };
-  return { bg: '#EAF3DE', color: '#27500A', label: 'Due in ' + Math.abs(days) + 'd' };
+function getDurationStyle(duration) {
+  if (duration > 3)  return { bg: '#E24B4A', color: '#fff',    label: duration + 'd — overdue' };
+  if (duration === 3) return { bg: '#EF9F27', color: '#fff',    label: '3d — warning' };
+  return                     { bg: '#EAF3DE', color: '#27500A', label: duration + 'd — ok' };
 }
 
 export default function WipPage({ darkMode }) {
@@ -60,7 +49,7 @@ export default function WipPage({ darkMode }) {
           duration:     parseFloat(r['DURATION(DAYS)'] || 0),
           salesOrder:   r['SALES_ORDER']       || '',
           deliveryDate: delivDate,
-          daysOverdue:  getDaysOverdue(delivDate),
+
         };
       }).filter(function(r) { return r.partNumber || r.runCard; });
       setData(parsed);
@@ -81,10 +70,9 @@ export default function WipPage({ darkMode }) {
     if (file) parseExcel(file);
   }
 
-  const overdueMore3 = data.filter(function(r) { return r.daysOverdue > 3; });
-  const overdueToday = data.filter(function(r) { return r.daysOverdue > 0 && r.daysOverdue <= 3; });
-  const dueToday     = data.filter(function(r) { return r.daysOverdue === 0; });
-  const onTime       = data.filter(function(r) { return r.daysOverdue < 0; });
+  const overdueMore3 = data.filter(function(r) { return r.duration > 3; });
+  const atLimit      = data.filter(function(r) { return r.duration === 3; });
+  const withinLimit  = data.filter(function(r) { return r.duration < 3; });
 
   const byStation = {};
   data.forEach(function(r) {
@@ -106,15 +94,13 @@ export default function WipPage({ darkMode }) {
       r.runCard.toLowerCase().includes(search.toLowerCase()) ||
       r.processName.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
-    if (filter === 'overdue3') return r.daysOverdue > 3;
-    if (filter === 'overdue')  return r.daysOverdue > 0;
-    if (filter === 'today')    return r.daysOverdue === 0;
-    if (filter === 'ontime')   return r.daysOverdue < 0;
+    if (filter === 'overdue3') return r.duration > 3;
+    if (filter === 'warning')  return r.duration === 3;
+    if (filter === 'ok')       return r.duration < 3;
     return true;
   });
 
   filtered = filtered.slice().sort(function(a, b) {
-    if (sortBy === 'overdue')  return b.daysOverdue - a.daysOverdue;
     if (sortBy === 'delivery') return new Date(a.deliveryDate) - new Date(b.deliveryDate);
     if (sortBy === 'duration') return b.duration - a.duration;
     return 0;
@@ -198,23 +184,23 @@ export default function WipPage({ darkMode }) {
             </div>
             <div className="kpi-card" style={{cursor:'pointer',border:filter==='overdue3'?'1px solid #E24B4A':'1px solid var(--border)'}} onClick={function(){setFilter('overdue3');}}>
               <div className="kpi-icon" style={{background:'#FCEBEB',color:'#A32D2D'}}><i className="ti ti-alert-triangle" aria-hidden="true" /></div>
-              <div className="kpi-label">Overdue &gt;3 days</div>
+              <div className="kpi-label">Duration &gt;3 days</div>
               <div className="kpi-val" style={{color:'#E24B4A'}}>{overdueMore3.length}</div>
-              <div className="kpi-footer" style={{color:'#E24B4A'}}>Click to filter</div>
+              <div className="kpi-footer" style={{color:'#E24B4A'}}>Needs attention</div>
               <div className="kpi-bar" style={{background:'#E24B4A'}} />
             </div>
-            <div className="kpi-card" style={{cursor:'pointer',border:filter==='today'?'1px solid #EF9F27':'1px solid var(--border)'}} onClick={function(){setFilter('today');}}>
+            <div className="kpi-card" style={{cursor:'pointer',border:filter==='warning'?'1px solid #EF9F27':'1px solid var(--border)'}} onClick={function(){setFilter('warning');}}>
               <div className="kpi-icon" style={{background:'#FAEEDA',color:'#854F0B'}}><i className="ti ti-clock" aria-hidden="true" /></div>
-              <div className="kpi-label">Due today</div>
-              <div className="kpi-val" style={{color:'#EF9F27'}}>{dueToday.length}</div>
-              <div className="kpi-footer text-muted">Click to filter</div>
+              <div className="kpi-label">At limit (3 days)</div>
+              <div className="kpi-val" style={{color:'#EF9F27'}}>{atLimit.length}</div>
+              <div className="kpi-footer text-muted">Warning</div>
               <div className="kpi-bar" style={{background:'#EF9F27'}} />
             </div>
-            <div className="kpi-card" style={{cursor:'pointer',border:filter==='ontime'?'1px solid #1D9E75':'1px solid var(--border)'}} onClick={function(){setFilter('ontime');}}>
+            <div className="kpi-card" style={{cursor:'pointer',border:filter==='ok'?'1px solid #1D9E75':'1px solid var(--border)'}} onClick={function(){setFilter('ok');}}>
               <div className="kpi-icon" style={{background:'#E1F5EE',color:'#0F6E56'}}><i className="ti ti-circle-check" aria-hidden="true" /></div>
-              <div className="kpi-label">On time</div>
-              <div className="kpi-val" style={{color:'#1D9E75'}}>{onTime.length}</div>
-              <div className="kpi-footer text-muted">Click to filter</div>
+              <div className="kpi-label">Within limit</div>
+              <div className="kpi-val" style={{color:'#1D9E75'}}>{withinLimit.length}</div>
+              <div className="kpi-footer text-muted">0-2 days</div>
               <div className="kpi-bar" style={{background:'#1D9E75'}} />
             </div>
           </div>
@@ -222,11 +208,11 @@ export default function WipPage({ darkMode }) {
           {/* Overdue >3 days alert banner */}
           {overdueMore3.length > 0 && (
             <div style={{background:'#791F1F',borderRadius:10,padding:'12px 16px',marginBottom:12,color:'#fff',display:'flex',alignItems:'center',gap:12}}>
-              <div style={{fontSize:24,flexShrink:0}}>🚨</div>
+              <i className="ti ti-alert-triangle" style={{fontSize:24,flexShrink:0}} aria-hidden="true" />
               <div>
-                <div style={{fontSize:13,fontWeight:500}}>{overdueMore3.length} lots are overdue by more than 3 days!</div>
+                <div style={{fontSize:13,fontWeight:500}}>{overdueMore3.length} lots have been in process for more than 3 days!</div>
                 <div style={{fontSize:11,opacity:.8}}>
-                  {overdueMore3.slice(0,3).map(function(r){return r.partNumber + ' (' + r.daysOverdue + 'd)';}).join(' · ')}
+                  {overdueMore3.slice(0,3).map(function(r){return r.partNumber + ' (' + r.duration + 'd)';}).join(' · ')}
                   {overdueMore3.length > 3 ? ' · and ' + (overdueMore3.length-3) + ' more...' : ''}
                 </div>
               </div>
@@ -281,16 +267,15 @@ export default function WipPage({ darkMode }) {
               style={{fontSize:12,padding:'5px 10px',border:'1px solid var(--border2)',borderRadius:7,background:'var(--input-bg)',color:'var(--text)',outline:'none',width:220}} />
             <div className="filter-sep" />
             <label style={{fontSize:11,color:'var(--text2)'}}>Filter:</label>
-            {[['all','All'],['overdue3','>3d overdue'],['overdue','Any overdue'],['today','Due today'],['ontime','On time']].map(function(item){
+            {[['all','All'],['overdue3','Duration >3d'],['warning','At limit 3d'],['ok','Within limit']].map(function(item){
               return <button key={item[0]} className={'quick-btn'+(filter===item[0]?' active':'')} onClick={function(){setFilter(item[0]);}}>{item[1]}</button>;
             })}
             <div className="filter-sep" />
             <label style={{fontSize:11,color:'var(--text2)'}}>Sort:</label>
             <select value={sortBy} onChange={function(e){setSortBy(e.target.value);}}
               style={{fontSize:11,padding:'4px 8px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}}>
-              <option value="overdue">Most overdue first</option>
-              <option value="delivery">Delivery date</option>
-              <option value="duration">Longest in production</option>
+              <option value="delivery">Delivery date (earliest first)</option>
+              <option value="duration">Longest in process first</option>
             </select>
             <div className="filter-right" style={{fontSize:11,color:'var(--text2)'}}>{filtered.length} lots</div>
           </div>
@@ -314,11 +299,10 @@ export default function WipPage({ darkMode }) {
                 </thead>
                 <tbody>
                   {filtered.map(function(r, i) {
-                    const ovStyle = getOverdueStyle(r.daysOverdue);
                     const sc = STATUS_COLORS[r.status] || {bg:'#F1EFE8',color:'#5F5E5A'};
-                    const isUrgent = r.daysOverdue > 3;
+                    const isUrgent = r.duration > 3;
                     return (
-                      <tr key={i} style={{background:isUrgent?'rgba(121,31,31,0.06)':''}}>
+                      <tr key={i} style={{background:isUrgent?'rgba(226,75,74,0.05)':''}}>
                         <td style={{fontWeight:500,fontSize:11,whiteSpace:'nowrap'}}>{r.runCard}</td>
                         <td style={{fontSize:11,whiteSpace:'nowrap',color:isUrgent?'#E24B4A':'var(--text)',fontWeight:isUrgent?500:400}}>{r.partNumber}</td>
                         <td style={{fontSize:11,whiteSpace:'nowrap',color:'var(--text2)'}}>{r.processName}</td>
@@ -331,9 +315,14 @@ export default function WipPage({ darkMode }) {
                         <td style={{fontSize:11,textAlign:'right',color:r.duration>100?'#E24B4A':'var(--text2)'}}>{r.duration}d</td>
                         <td style={{fontSize:11,whiteSpace:'nowrap'}}>{r.deliveryDate}</td>
                         <td>
-                          <span style={{padding:'2px 7px',borderRadius:10,fontSize:10,fontWeight:500,background:ovStyle.bg,color:ovStyle.color,whiteSpace:'nowrap'}}>
-                            {isUrgent && '🚨 '}{ovStyle.label}
-                          </span>
+                          {(function(){
+                            const ds = getDurationStyle(r.duration);
+                            return (
+                              <span style={{padding:'2px 7px',borderRadius:10,fontSize:10,fontWeight:500,background:ds.bg,color:ds.color,whiteSpace:'nowrap'}}>
+                                {ds.label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td style={{fontSize:10,color:'var(--text2)'}}>{r.orderType}</td>
                       </tr>
