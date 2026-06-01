@@ -94,6 +94,28 @@ export default function App() {
         />
       )}
       <Toast msg={toastMsg} />
+
+      <nav className="mobile-nav" role="navigation" aria-label="Mobile navigation">
+        {[
+          { key: 'overview',   icon: 'ti-layout-dashboard', label: 'Overview' },
+          { key: 'entry',      icon: 'ti-edit',             label: 'Entry' },
+          { key: 'wip',        icon: 'ti-clipboard-list',   label: 'WIP' },
+          { key: 'etchrate',   icon: 'ti-chart-dots',       label: 'Etch' },
+          { key: 'personalot', icon: 'ti-user-clock',       label: 'My OT' },
+        ].map(function(item) {
+          return (
+            <button
+              key={item.key}
+              className={page === item.key ? 'mobile-nav-btn active' : 'mobile-nav-btn'}
+              onClick={function() { setPage(item.key); }}
+              aria-label={item.label}
+            >
+              <i className={'ti ' + item.icon} aria-hidden="true" />
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
