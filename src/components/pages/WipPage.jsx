@@ -176,28 +176,28 @@ export default function WipPage({ darkMode }) {
           {/* KPI summary */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
             <div className="kpi-card" style={{cursor:'pointer',border:filter==='all'?'1px solid #378ADD':'1px solid var(--border)'}} onClick={function(){setFilter('all');}}>
-              <div className="kpi-icon" style={{background:'#E6F1FB',color:'#185FA5'}}><i className="ti ti-layers" aria-hidden="true" /></div>
+              <div className="kpi-icon" style={{background:'#E6F1FB',color:'#185FA5'}}>📋</div>
               <div className="kpi-label">Total lots</div>
               <div className="kpi-val">{data.length}</div>
               <div className="kpi-footer text-muted">{Object.keys(byStation).length} stations</div>
               <div className="kpi-bar" style={{background:'#378ADD'}} />
             </div>
             <div className="kpi-card" style={{cursor:'pointer',border:filter==='overdue3'?'1px solid #E24B4A':'1px solid var(--border)'}} onClick={function(){setFilter('overdue3');}}>
-              <div className="kpi-icon" style={{background:'#FCEBEB',color:'#A32D2D'}}><i className="ti ti-alert-triangle" aria-hidden="true" /></div>
+              <div className="kpi-icon" style={{background:'#FCEBEB',color:'#A32D2D'}}>🔴</div>
               <div className="kpi-label">Duration &gt;3 days</div>
               <div className="kpi-val" style={{color:'#E24B4A'}}>{overdueMore3.length}</div>
               <div className="kpi-footer" style={{color:'#E24B4A'}}>Needs attention</div>
               <div className="kpi-bar" style={{background:'#E24B4A'}} />
             </div>
             <div className="kpi-card" style={{cursor:'pointer',border:filter==='warning'?'1px solid #EF9F27':'1px solid var(--border)'}} onClick={function(){setFilter('warning');}}>
-              <div className="kpi-icon" style={{background:'#FAEEDA',color:'#854F0B'}}><i className="ti ti-clock" aria-hidden="true" /></div>
+              <div className="kpi-icon" style={{background:'#FAEEDA',color:'#854F0B'}}>⚠️</div>
               <div className="kpi-label">At limit (3 days)</div>
               <div className="kpi-val" style={{color:'#EF9F27'}}>{atLimit.length}</div>
               <div className="kpi-footer text-muted">Warning</div>
               <div className="kpi-bar" style={{background:'#EF9F27'}} />
             </div>
             <div className="kpi-card" style={{cursor:'pointer',border:filter==='ok'?'1px solid #1D9E75':'1px solid var(--border)'}} onClick={function(){setFilter('ok');}}>
-              <div className="kpi-icon" style={{background:'#E1F5EE',color:'#0F6E56'}}><i className="ti ti-circle-check" aria-hidden="true" /></div>
+              <div className="kpi-icon" style={{background:'#E1F5EE',color:'#0F6E56'}}>✅</div>
               <div className="kpi-label">Within limit</div>
               <div className="kpi-val" style={{color:'#1D9E75'}}>{withinLimit.length}</div>
               <div className="kpi-footer text-muted">0-2 days</div>
