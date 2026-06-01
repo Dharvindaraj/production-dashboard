@@ -52,6 +52,7 @@ export const PAGE_TITLES = {
   personalot: 'Personal OT',
   history:    'History log',
   settings:   'Settings',
+  wip:        'WIP Tracker',
 };
 
 export function tod(d) {

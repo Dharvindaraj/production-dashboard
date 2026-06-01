@@ -12,6 +12,7 @@ import CapacityPage from './components/pages/CapacityPage';
 import EtchRatePage from './components/pages/EtchRatePage';
 import PersonalOTPage from './components/pages/PersonalOTPage';
 import SettingsPage from './components/pages/SettingsPage';
+import WipPage from './components/pages/WipPage';
 import EditModal from './components/EditModal';
 import { getAllDays } from './utils/storage';
 import { tod, PAGE_TITLES } from './utils/constants';
@@ -81,6 +82,7 @@ export default function App() {
           {page === 'personalot' && <PersonalOTPage {...pageProps} />}
           {page === 'history'    && <HistoryPage {...pageProps} onEdit={setEditDate} />}
           {page === 'settings'   && <SettingsPage {...pageProps} />}
+          {page === 'wip'       && <WipPage {...pageProps} />}
         </div>
       </div>
       {editDate && (

@@ -13,6 +13,8 @@ export default function Sidebar({ page, setPage, darkMode, setDarkMode }) {
     { key: 'history',    icon: 'ti-table',            label: 'History log' },
     { section: 'Personal' },
     { key: 'personalot', icon: 'ti-user-clock',       label: 'My OT' },
+    { section: 'Production' },
+    { key: 'wip',        icon: 'ti-clipboard-list',  label: 'WIP tracker' },
     { section: 'Admin' },
     { key: 'settings',   icon: 'ti-adjustments',      label: 'Settings' },
   ];
