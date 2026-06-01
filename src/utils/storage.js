@@ -168,6 +168,7 @@ export async function savePersonalOT(date, entry) {
     ot_hours: entry.otHours,
     ot_amount: entry.otAmount,
     is_weekend: entry.isWeekend,
+    is_public_holiday: entry.isPublicHoliday,
     notes: entry.notes,
   }, { onConflict: 'entry_date' });
   return !error;
