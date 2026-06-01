@@ -14,7 +14,8 @@ export default function EntryPage({ globalDate, onSave, toast }) {
   const [matIssue, setMatIssue]     = useState({ copperFoil: '', prepreg: '' });
   const [fields, setFields]         = useState({
     output: '', target: '', scrap: '', aoi: '',
-    dent: '', scratch: '', wrinkle: '', notes: ''
+    dent: '', scratch: '', wrinkle: '', notes: '',
+    delayReason: ''
   });
 
   useEffect(function() {
@@ -48,7 +49,8 @@ export default function EntryPage({ globalDate, onSave, toast }) {
       output: d.output || '', target: d.target || '',
       scrap: d.scrap || '', aoi: d.aoi || '',
       dent: d.dent || '', scratch: d.scratch || '',
-      wrinkle: d.wrinkle || '', notes: d.notes || ''
+      wrinkle: d.wrinkle || '', notes: d.notes || '',
+      delayReason: d.delayReason || ''
     });
     setDefVals(d.defects || {});
     setStnMorning(d.stations_morning || {});
@@ -79,6 +81,7 @@ export default function EntryPage({ globalDate, onSave, toast }) {
       scratch: parseFloat(fields.scratch) || 0,
       wrinkle: parseFloat(fields.wrinkle) || 0,
       notes:   fields.notes,
+      delayReason: fields.delayReason,
       defects: defVals,
       stations: totalStations,
       stations_morning: morning,
@@ -324,6 +327,38 @@ export default function EntryPage({ globalDate, onSave, toast }) {
           </div>
         </div>
       </div>
+
+      {(function() {
+        const output = parseFloat(fields.output) || 0;
+        const target = parseFloat(fields.target) || 0;
+        const isBelow = target > 0 && output < target;
+        const shortfall = target - output;
+        if (!isBelow) return null;
+        return (
+          <div className="card" style={{marginBottom:10,border:'1px solid #E24B4A',background:'rgba(226,75,74,0.05)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+              <div style={{width:32,height:32,borderRadius:'50%',background:'#FCEBEB',color:'#E24B4A',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>
+                ⚠️
+              </div>
+              <div>
+                <div style={{fontSize:13,fontWeight:500,color:'#E24B4A'}}>Output below target</div>
+                <div style={{fontSize:11,color:'var(--text2)'}}>
+                  Short by {shortfall.toLocaleString()} m² ({((shortfall/target)*100).toFixed(1)}% gap) — please provide reason
+                </div>
+              </div>
+            </div>
+            <div className="fg">
+              <label style={{color:'#E24B4A'}}>Reason for output delay (required)</label>
+              <textarea
+                value={fields.delayReason || ''}
+                placeholder="e.g. Machine downtime at Oxide station, material shortage, manpower issue..."
+                style={{borderColor:'#E24B4A',minHeight:70}}
+                onChange={function(e){setFields(function(f){return Object.assign({},f,{delayReason:e.target.value});});}}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="card">
         <div className="section-lbl" style={{marginTop:0}}>Notes and remarks</div>
