@@ -39,7 +39,8 @@ export default function ScrapPage({ darkMode, toast }) {
   const [pushed, setPushed]           = useState(false);
   const [pushingMain, setPushingMain] = useState(false);
   const [pushedMain, setPushedMain]   = useState(false);
-  const [fileDate, setFileDate] = useState('');
+  const [fileDate, setFileDate]   = useState('');
+  const [manualDate, setManualDate] = useState(daysAgo(1));
   const [dragging, setDragging] = useState(false);
   const [sortCol, setSortCol]   = useState('scrapArea');
   const [sortDir, setSortDir]   = useState('desc');
@@ -392,7 +393,8 @@ export default function ScrapPage({ darkMode, toast }) {
   async function pushToMain() {
     if (!outputM2)  { toast('Please key in output m² first'); return; }
     if (!data)      { toast('No data loaded'); return; }
-    if (!fileDate)  { toast('Cannot detect file date — rename file with BeginDate format'); return; }
+    var pushDate = fileDate || manualDate;
+    if (!pushDate)  { toast('Cannot detect date — please select a date manually'); return; }
     setPushingMain(true);
 
     const pnMap = {};
@@ -406,7 +408,8 @@ export default function ScrapPage({ darkMode, toast }) {
       pnMap[key].defects[cat] += r.scrapArea;
     });
 
-    const ok = await saveScrapHistory(fileDate, {
+    var pushDate = fileDate || manualDate;
+    const ok = await saveScrapHistory(pushDate, {
       outputM2:          parseFloat(outputM2),
       grandTotalScrap:   data.grandTotalScrapArea,
       masslamScrapArea:  data.myTotalScrapArea,
@@ -422,7 +425,7 @@ export default function ScrapPage({ darkMode, toast }) {
     });
 
     setPushingMain(false);
-    if (ok) { setPushedMain(true); toast('Saved to scrap history — ' + fileDate); }
+    if (ok) { setPushedMain(true); toast('Saved to scrap history — ' + (fileDate||manualDate)); }
     else toast('Error saving to history');
   }
 
@@ -522,7 +525,7 @@ export default function ScrapPage({ darkMode, toast }) {
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
               <div>
                 <div style={{fontSize:13,fontWeight:500,color:'var(--text)',marginBottom:4}}>Push scrap data to daily entry</div>
-                <div style={{fontSize:11,color:'var(--text2)'}}>Updates <strong>yesterday ({daysAgo(1)})</strong> scrap % and defect breakdown</div>
+                <div style={{fontSize:11,color:'var(--text2)'}}>Pushes scrap % and defects to <strong>yesterday ({daysAgo(1)})</strong> daily entry</div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
                 <div className="fg" style={{margin:0}}>
