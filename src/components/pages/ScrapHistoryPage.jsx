@@ -27,6 +27,12 @@ export default function ScrapHistoryPage({ darkMode }) {
   const [showScrap, setShowScrap]     = useState(true);
   const [showAvg, setShowAvg]         = useState(true);
   const [showTarget, setShowTarget]   = useState(true);
+  const [showDent, setShowDent]       = useState(false);
+  const [showWrinkle, setShowWrinkle] = useState(false);
+  const [showScratch, setShowScratch] = useState(false);
+  const [showWhitish, setShowWhitish] = useState(false);
+  const [showVoid, setShowVoid]       = useState(false);
+  const [showOthers, setShowOthers]   = useState(false);
 
   const gridColor = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const tickColor = darkMode ? '#9499b0' : '#666';
@@ -157,11 +163,17 @@ export default function ScrapHistoryPage({ darkMode }) {
               <span className="leg"><span className="leg-dot" style={{background:'#E24B4A'}}></span>Scrap %</span>
               <span className="leg"><span className="leg-dot" style={{background:'#5DCAA5'}}></span>Target {SCRAP_TARGET}%</span>
             </div>
-            <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
+            <div style={{display:'flex',gap:6,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
               {[
-                {key:'showScrap',  state:showScrap,  set:setShowScrap,  color:'#E24B4A', label:'Daily scrap'},
-                {key:'showAvg',    state:showAvg,    set:setShowAvg,    color:'#EF9F27', label:'7-day avg'},
-                {key:'showTarget', state:showTarget, set:setShowTarget, color:'#5DCAA5', label:'Target '+SCRAP_TARGET+'%'},
+                {key:'showScrap',   state:showScrap,   set:setShowScrap,   color:'#E24B4A', label:'Daily scrap'},
+                {key:'showAvg',     state:showAvg,     set:setShowAvg,     color:'#EF9F27', label:'7-day avg'},
+                {key:'showTarget',  state:showTarget,  set:setShowTarget,  color:'#5DCAA5', label:'Target '+SCRAP_TARGET+'%'},
+                {key:'showDent',    state:showDent,    set:setShowDent,    color:'#378ADD', label:'Dent'},
+                {key:'showWrinkle', state:showWrinkle, set:setShowWrinkle, color:'#EF9F27', label:'Wrinkle'},
+                {key:'showScratch', state:showScratch, set:setShowScratch, color:'#E24B4A', label:'Scratch'},
+                {key:'showWhitish', state:showWhitish, set:setShowWhitish, color:'#5DCAA5', label:'Whitish'},
+                {key:'showVoid',    state:showVoid,    set:setShowVoid,    color:'#7F77DD', label:'Void'},
+                {key:'showOthers',  state:showOthers,  set:setShowOthers,  color:'#888780', label:'Others'},
               ].map(function(item){
                 return (
                   <button key={item.key}
@@ -184,7 +196,13 @@ export default function ScrapHistoryPage({ darkMode }) {
                   var sl=scrapPcts.slice(start,i+1).filter(function(v){return v>0;});
                   return sl.length?parseFloat((sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(4)):null;
                 }),borderColor:'#EF9F27',fill:false,tension:.4,pointRadius:0,borderWidth:2,spanGaps:true},
-                showTarget && {label:'Target',data:labels.map(function(){return SCRAP_TARGET;}),borderColor:'#5DCAA5',borderDash:[5,4],fill:false,pointRadius:0,borderWidth:1.5}
+                showTarget  && {label:'Target', data:labels.map(function(){return SCRAP_TARGET;}),borderColor:'#5DCAA5',borderDash:[5,4],fill:false,pointRadius:0,borderWidth:1.5},
+                showDent    && {label:'Dent',    data:history.map(function(d){return parseFloat(d.defect_dent)||0;}),   borderColor:'#378ADD',fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
+                showWrinkle && {label:'Wrinkle', data:history.map(function(d){return parseFloat(d.defect_wrinkle)||0;}),borderColor:'#EF9F27',fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
+                showScratch && {label:'Scratch', data:history.map(function(d){return parseFloat(d.defect_scratch)||0;}),borderColor:'#E24B4A',fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
+                showWhitish && {label:'Whitish', data:history.map(function(d){return parseFloat(d.defect_whitish)||0;}),borderColor:'#5DCAA5',fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
+                showVoid    && {label:'Void',    data:history.map(function(d){return parseFloat(d.defect_void)||0;}),   borderColor:'#7F77DD',fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
+                showOthers  && {label:'Others',  data:history.map(function(d){return parseFloat(d.defect_others)||0;}), borderColor:'#888780',fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
               ].filter(Boolean)
             }} options={lineOpts} />
           </div>
