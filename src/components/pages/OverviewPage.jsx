@@ -65,7 +65,10 @@ export default function OverviewPage({ allDays, darkMode }) {
     avgDefs[n] = vs.length ? vs.reduce(function(a,b){return a+b;},0)/vs.length : 0;
   });
 
-  const aoiVals = lastD ? [lastD.dent||0,lastD.scratch||0,lastD.wrinkle||0] : [0,0,0];
+  const aoiDentAvg    = filtered.length ? filtered.reduce(function(s,x){return s+(parseFloat(x.data.dent)||0);},0)/filtered.length : 0;
+  const aoiScratchAvg = filtered.length ? filtered.reduce(function(s,x){return s+(parseFloat(x.data.scratch)||0);},0)/filtered.length : 0;
+  const aoiWrinkleAvg = filtered.length ? filtered.reduce(function(s,x){return s+(parseFloat(x.data.wrinkle)||0);},0)/filtered.length : 0;
+  const aoiVals = [aoiDentAvg, aoiScratchAvg, aoiWrinkleAvg];
 
   var STN_NAMES_ORD = ['Oxide','Glicap','Baking','Rivet','Setup','Preparation','Pulse bonding','CCD Welding','Layup 1','Layup 2','Vigor press','Buckle press','Routing 1','Routing 2','Xray 1','Xray 2','TTST'];
 
@@ -523,13 +526,58 @@ export default function OverviewPage({ allDays, darkMode }) {
           <DefectBars data={avgDefs} />
         </div>
         <div className="card">
-          <div className="card-head"><div><div className="card-title">AOI breakdown</div><div className="card-sub">Latest day</div></div></div>
-          <div className="legend-row">
-            {['Dent','Scratches','Wrinkle'].map(function(l,i){return <span key={l} className="leg"><span className="leg-dot" style={{background:['#378ADD','#EF9F27','#E24B4A'][i]}}></span>{l+' '+aoiVals[i].toFixed(1)+'%'}</span>;})}
+          <div className="card-head"><div><div className="card-title">AOI breakdown</div><div className="card-sub">Period average</div></div></div>
+          <div style={{position:'relative',height:160,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Doughnut
+              key={'aoi-donut-'+filtered.length}
+              data={{
+                labels:['Dent','Scratches','Wrinkle'],
+                datasets:[{
+                  data:aoiVals,
+                  backgroundColor:['#378ADD','#EF9F27','#E24B4A'],
+                  borderWidth:3,
+                  borderColor: darkMode ? '#1a1a1a' : '#ffffff',
+                  hoverOffset:6,
+                }]
+              }}
+              options={{
+                responsive:true,
+                maintainAspectRatio:false,
+                cutout:'68%',
+                plugins:{
+                  legend:{display:false},
+                  tooltip:{
+                    callbacks:{
+                      label:function(ctx){
+                        return ' '+ctx.label+': '+ctx.parsed.toFixed(2)+'%';
+                      }
+                    }
+                  }
+                }
+              }}
+            />
+            <div style={{
+              position:'absolute',
+              top:'50%',left:'50%',
+              transform:'translate(-50%,-50%)',
+              textAlign:'center',
+              pointerEvents:'none',
+            }}>
+              <div style={{fontSize:16,fontWeight:600,color:'var(--text)',lineHeight:1}}>
+                {(aoiDentAvg+aoiScratchAvg+aoiWrinkleAvg).toFixed(2)}%
+              </div>
+              <div style={{fontSize:9,color:'var(--text2)',marginTop:2}}>Total AOI</div>
+            </div>
           </div>
-          <div style={{height:110}}>
-            <Doughnut data={{labels:['Dent','Scratches','Wrinkle'],datasets:[{data:aoiVals,backgroundColor:['#378ADD','#EF9F27','#E24B4A'],borderWidth:0}]}}
-              options={{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}} />
+          <div style={{display:'flex',justifyContent:'space-around',marginTop:6}}>
+            {[['Dent',aoiDentAvg,'#378ADD'],['Scratch',aoiScratchAvg,'#EF9F27'],['Wrinkle',aoiWrinkleAvg,'#E24B4A']].map(function(item){
+              return (
+                <div key={item[0]} style={{textAlign:'center'}}>
+                  <div style={{fontSize:11,fontWeight:600,color:item[2]}}>{item[1].toFixed(2)}%</div>
+                  <div style={{fontSize:9,color:'var(--text2)',marginTop:1}}>{item[0]}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="card">
