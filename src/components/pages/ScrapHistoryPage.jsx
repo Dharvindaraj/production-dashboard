@@ -24,6 +24,9 @@ export default function ScrapHistoryPage({ darkMode }) {
   const [to, setTo]                   = useState(tod());
   const [loading, setLoading]         = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [showScrap, setShowScrap]     = useState(true);
+  const [showAvg, setShowAvg]         = useState(true);
+  const [showTarget, setShowTarget]   = useState(true);
 
   const gridColor = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const tickColor = darkMode ? '#9499b0' : '#666';
@@ -154,13 +157,35 @@ export default function ScrapHistoryPage({ darkMode }) {
               <span className="leg"><span className="leg-dot" style={{background:'#E24B4A'}}></span>Scrap %</span>
               <span className="leg"><span className="leg-dot" style={{background:'#5DCAA5'}}></span>Target {SCRAP_TARGET}%</span>
             </div>
+            <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
+              {[
+                {key:'showScrap',  state:showScrap,  set:setShowScrap,  color:'#E24B4A', label:'Daily scrap'},
+                {key:'showAvg',    state:showAvg,    set:setShowAvg,    color:'#EF9F27', label:'7-day avg'},
+                {key:'showTarget', state:showTarget, set:setShowTarget, color:'#5DCAA5', label:'Target '+SCRAP_TARGET+'%'},
+              ].map(function(item){
+                return (
+                  <button key={item.key}
+                    onClick={function(){item.set(function(v){return !v;});}}
+                    style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:20,border:'1.5px solid '+item.color,
+                      background:item.state?item.color+'22':'transparent',cursor:'pointer',fontSize:11,color:item.state?item.color:'var(--text2)',fontWeight:item.state?500:400}}>
+                    <span style={{width:8,height:8,borderRadius:'50%',background:item.state?item.color:'var(--border2)',flexShrink:0,display:'inline-block'}}></span>
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
             <GradientLine id="scrap-hist-trend" height={200} data={{
               labels,
               datasets:[
-                {label:'Scrap %',data:scrapPcts,borderColor:'#E24B4A',fill:true,tension:.3,pointRadius:4,spanGaps:true,
+                showScrap && {label:'Scrap %',data:scrapPcts,borderColor:'#E24B4A',fill:true,tension:.3,pointRadius:4,spanGaps:true,
                   pointBackgroundColor:scrapPcts.map(function(v){return v>SCRAP_TARGET?'#E24B4A':'#5DCAA5';})},
-                {label:'Target',data:labels.map(function(){return SCRAP_TARGET;}),borderColor:'#5DCAA5',borderDash:[5,4],fill:false,pointRadius:0,borderWidth:1.5}
-              ]
+                showAvg && {label:'7-day avg',data:scrapPcts.map(function(_,i){
+                  var start=Math.max(0,i-6);
+                  var sl=scrapPcts.slice(start,i+1).filter(function(v){return v>0;});
+                  return sl.length?parseFloat((sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(4)):null;
+                }),borderColor:'#EF9F27',fill:false,tension:.4,pointRadius:0,borderWidth:2,spanGaps:true},
+                showTarget && {label:'Target',data:labels.map(function(){return SCRAP_TARGET;}),borderColor:'#5DCAA5',borderDash:[5,4],fill:false,pointRadius:0,borderWidth:1.5}
+              ].filter(Boolean)
             }} options={lineOpts} />
           </div>
 
@@ -190,11 +215,41 @@ export default function ScrapHistoryPage({ darkMode }) {
             </div>
             <div className="card">
               <div className="card-head"><div><div className="card-title">Defect distribution</div><div className="card-sub">Period average</div></div></div>
-              <div style={{height:220}}>
+              <div style={{position:'relative',height:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <Doughnut
-                  data={{labels:Object.keys(avgDefects),datasets:[{data:Object.values(avgDefects).map(function(v){return parseFloat(v.toFixed(4));}),backgroundColor:Object.keys(avgDefects).map(function(k){return DEFECT_COLORS[k];}),borderWidth:0,hoverOffset:4}]}}
-                  options={{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,color:tickColor}}}}}
+                  key={'hist-donut-'+history.length}
+                  data={{
+                    labels:Object.keys(avgDefects),
+                    datasets:[{
+                      data:Object.values(avgDefects).map(function(v){return parseFloat(v.toFixed(4));}),
+                      backgroundColor:Object.keys(avgDefects).map(function(k){return DEFECT_COLORS[k];}),
+                      borderWidth:3,
+                      borderColor: darkMode?'#1a1a1a':'#ffffff',
+                      hoverOffset:6,
+                    }]
+                  }}
+                  options={{
+                    responsive:true,maintainAspectRatio:false,cutout:'68%',
+                    plugins:{
+                      legend:{display:false},
+                      tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+ctx.parsed.toFixed(4)+'%';}}}
+                    }
+                  }}
                 />
+                <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center',pointerEvents:'none'}}>
+                  <div style={{fontSize:15,fontWeight:600,color:'var(--text)',lineHeight:1}}>{avgScrap.toFixed(4)}%</div>
+                  <div style={{fontSize:9,color:'var(--text2)',marginTop:2}}>Avg scrap</div>
+                </div>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-around',flexWrap:'wrap',marginTop:6,gap:4}}>
+                {Object.entries(avgDefects).sort(function(a,b){return b[1]-a[1];}).map(function(entry){
+                  return (
+                    <div key={entry[0]} style={{textAlign:'center',minWidth:50}}>
+                      <div style={{fontSize:10,fontWeight:600,color:DEFECT_COLORS[entry[0]]}}>{entry[1].toFixed(4)}%</div>
+                      <div style={{fontSize:9,color:'var(--text2)',marginTop:1}}>{entry[0]}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
