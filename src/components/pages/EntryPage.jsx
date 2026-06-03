@@ -7,9 +7,7 @@ const AVT_TC = ['#27500A','#0C447C','#633806','#791F1F','#3B3599','#0F6E56'];
 
 export default function EntryPage({ globalDate, toast, onSave }) {
   const [fields, setFields] = useState({
-    output:'', target:'', scrap:'', aoi:'',
-    dent:'', scratch:'', wrinkle:'', notes:'',
-    delayReason:'', noProduction: false
+    output:'', target:'', scrap:'', dent:'', scratch:'', wrinkle:'', notes:'', delayReason:'', noProduction:false
   });
   const [defVals, setDefVals]       = useState({});
   const [stnMorning, setStnMorning] = useState({});
@@ -30,27 +28,52 @@ export default function EntryPage({ globalDate, toast, onSave }) {
       const d = await storageGet('day:' + globalDate);
       if (d) {
         setFields({
-          output: d.output || '', target: d.target || '',
-          scrap: d.scrap || '', aoi: d.aoi || '',
-          dent: d.dent || '', scratch: d.scratch || '',
-          wrinkle: d.wrinkle || '', notes: d.notes || '',
+          output:      d.output      || '',
+          target:      d.target      || '',
+          scrap:       d.scrap       || '',
+          dent:        d.dent        || '',
+          scratch:     d.scratch     || '',
+          wrinkle:     d.wrinkle     || '',
+          notes:       d.notes       || '',
           delayReason: d.delayReason || '',
           noProduction: d.noProduction || false,
         });
         setDefVals(d.defects || {});
-        setStnMorning(d.stations_morning || {});
-        setStnNight(d.stations_night || {});
+        const stnList2 = await getStationsList();
+        function convertStationKeys(stationData, nameList) {
+          if (!stationData) return {};
+          var keys = Object.keys(stationData);
+          if (!keys.length) return {};
+          var firstKey = keys[0];
+          if (isNaN(parseInt(firstKey))) return stationData;
+          var result = {};
+          nameList.forEach(function(s, i) {
+            var v = stationData[String(i+1)];
+            if (v) result[s.name] = v;
+          });
+          return result;
+        }
+        setStnMorning(convertStationKeys(d.stations_morning, stnList2) || {});
+        setStnNight(convertStationKeys(d.stations_night, stnList2) || {});
+        if (!d.stations_morning || Object.keys(d.stations_morning).length === 0) {
+          setStnMorning(convertStationKeys(d.stations, stnList2) || {});
+        }
         if (d.operators && d.operators.length > 0) {
           setOps(d.operators);
         } else if (opsList.length > 0) {
-          setOps(opsList.map(function(o) { return { name: o.name, shift: 'day' }; }));
+          setOps(opsList.map(function(o){ return { name: o.name, shift: 'day' }; }));
         }
         const mat = await getDayMaterials(globalDate);
         setMatIssue({ copperFoil: mat.copperFoil || '', prepreg: mat.prepreg || '' });
       } else {
         if (opsList.length > 0) {
-          setOps(opsList.map(function(o) { return { name: o.name, shift: 'day' }; }));
+          setOps(opsList.map(function(o){ return { name: o.name, shift: 'day' }; }));
         }
+        setStnMorning({});
+        setStnNight({});
+        setDefVals({});
+        setMatIssue({ copperFoil:'', prepreg:'' });
+        setFields({ output:'', target:'', scrap:'', dent:'', scratch:'', wrinkle:'', notes:'', delayReason:'', noProduction:false });
       }
     }
     loadAll();
@@ -59,7 +82,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
   const autoAoi = ((parseFloat(fields.dent)||0) + (parseFloat(fields.scratch)||0) + (parseFloat(fields.wrinkle)||0)).toFixed(2);
 
   const totalMh = ops.reduce(function(s, o) {
-    const sh = SHIFT_OPTIONS.find(function(x) { return x.value === (o.shift||'day'); }) || SHIFT_OPTIONS[0];
+    const sh = SHIFT_OPTIONS.find(function(x){ return x.value === (o.shift||'day'); }) || SHIFT_OPTIONS[0];
     return s + sh.hours;
   }, 0);
 
@@ -76,7 +99,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
 
   function toggleSelectOp(name) {
     setSelectedOps(function(prev) {
-      if (prev.indexOf(name) >= 0) return prev.filter(function(n) { return n !== name; });
+      if (prev.indexOf(name) >= 0) return prev.filter(function(n){ return n !== name; });
       return prev.concat([name]);
     });
   }
@@ -84,7 +107,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
   function selectAllVisible() {
     const visible = ops.filter(function(o) {
       return !opSearch || o.name.toLowerCase().includes(opSearch.toLowerCase());
-    }).map(function(o) { return o.name; });
+    }).map(function(o){ return o.name; });
     setSelectedOps(visible);
   }
 
@@ -101,44 +124,40 @@ export default function EntryPage({ globalDate, toast, onSave }) {
   }
 
   function setAllMgmtCut() {
-    setOps(ops.map(function(o) {
-      return Object.assign({}, o, { shift: o.shift === 'absent' ? 'absent' : 'cut_mgmt' });
-    }));
+    setOps(ops.map(function(o){ return Object.assign({}, o, { shift: o.shift==='absent'?'absent':'cut_mgmt' }); }));
     toast('All set to Management Cut OT');
   }
 
   function setAllNormal() {
-    setOps(ops.map(function(o) {
-      return Object.assign({}, o, { shift: o.shift === 'absent' ? 'absent' : 'day' });
-    }));
+    setOps(ops.map(function(o){ return Object.assign({}, o, { shift: o.shift==='absent'?'absent':'day' }); }));
     toast('All set to Day shift');
   }
 
   function setAllPublicHoliday() {
-    setOps(ops.map(function(o) { return Object.assign({}, o, { shift: 'absent' }); }));
+    setOps(ops.map(function(o){ return Object.assign({}, o, { shift: 'absent' }); }));
     toast('All set to Public Holiday (Absent)');
   }
 
   async function handleSave() {
     setSaving(true);
     const ok = await storageSet('day:' + globalDate, {
-      output:  parseFloat(fields.output)  || 0,
-      target:  parseFloat(fields.target)  || 0,
-      scrap:   parseFloat(fields.scrap)   || 0,
-      aoi:     parseFloat(autoAoi)        || 0,
-      dent:    parseFloat(fields.dent)    || 0,
-      scratch: parseFloat(fields.scratch) || 0,
-      wrinkle: parseFloat(fields.wrinkle) || 0,
-      mh:      totalMh,
-      m2hr:    parseFloat(totalM2hr)      || 0,
-      notes:   fields.notes,
-      delayReason: fields.delayReason,
+      output:       parseFloat(fields.output)  || 0,
+      target:       parseFloat(fields.target)  || 0,
+      scrap:        parseFloat(fields.scrap)   || 0,
+      aoi:          parseFloat(autoAoi)        || 0,
+      dent:         parseFloat(fields.dent)    || 0,
+      scratch:      parseFloat(fields.scratch) || 0,
+      wrinkle:      parseFloat(fields.wrinkle) || 0,
+      mh:           totalMh,
+      m2hr:         parseFloat(totalM2hr)      || 0,
+      notes:        fields.notes,
+      delayReason:  fields.delayReason,
       noProduction: fields.noProduction || false,
-      defects: defVals,
-      stations: stnMorning,
+      defects:          defVals,
+      stations:         stnMorning,
       stations_morning: stnMorning,
       stations_night:   stnNight,
-      operators: ops,
+      operators:        ops,
     });
     if (ok) {
       await saveDayMaterials(globalDate, {
@@ -153,19 +172,20 @@ export default function EntryPage({ globalDate, toast, onSave }) {
     setSaving(false);
   }
 
-  const showDelayWarning = parseFloat(fields.output) > 0 && parseFloat(fields.target) > 0 && parseFloat(fields.output) < parseFloat(fields.target);
+  const showDelayWarning = !fields.noProduction && parseFloat(fields.output) > 0 && parseFloat(fields.target) > 0 && parseFloat(fields.output) < parseFloat(fields.target);
 
   return (
     <div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <div style={{fontSize:13,fontWeight:500,color:'var(--text)'}}>Daily entry — {globalDate}</div>
-        <button className="btn-primary" onClick={handleSave} disabled={saving}>
+        <button className="btn-primary" onClick={handleSave} disabled={saving} style={{minWidth:100}}>
           {saving ? 'Saving...' : 'Save entry'}
         </button>
       </div>
 
+      {/* Output */}
       <div className="card" style={{marginBottom:10}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
           <div className="section-lbl" style={{margin:0}}>Output and target</div>
           <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 12px',borderRadius:8,cursor:'pointer',
             background:fields.noProduction?'#FCEBEB':'var(--bg3)',
@@ -178,8 +198,10 @@ export default function EntryPage({ globalDate, toast, onSave }) {
               });});
               if (np) toast('Marked as no production day');
             }}>
-            <div style={{width:18,height:18,borderRadius:4,border:'1.5px solid '+(fields.noProduction?'#E24B4A':'var(--border2)'),
-              background:fields.noProduction?'#E24B4A':'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{width:18,height:18,borderRadius:4,
+              border:'1.5px solid '+(fields.noProduction?'#E24B4A':'var(--border2)'),
+              background:fields.noProduction?'#E24B4A':'transparent',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
               {fields.noProduction && <span style={{color:'#fff',fontSize:12,fontWeight:700}}>✓</span>}
             </div>
             <span style={{fontSize:11,fontWeight:500,color:fields.noProduction?'#E24B4A':'var(--text2)'}}>No production today</span>
@@ -194,6 +216,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
           <div className="fg">
             <label>Daily output (m²)</label>
             <input type="number" value={fields.output} disabled={fields.noProduction}
+              style={{background:fields.noProduction?'var(--bg3)':'',cursor:fields.noProduction?'not-allowed':''}}
               onChange={function(e){setFields(function(f){return Object.assign({},f,{output:e.target.value});});}} />
           </div>
           <div className="fg">
@@ -213,6 +236,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
         )}
       </div>
 
+      {/* Scrap */}
       <div className="card" style={{marginBottom:10}}>
         <div className="section-lbl">AOI scrap breakdown</div>
         <div className="form-grid">
@@ -232,7 +256,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
               onChange={function(e){setFields(function(f){return Object.assign({},f,{wrinkle:e.target.value});});}} />
           </div>
           <div className="fg">
-            <label>AOI scrap % — auto</label>
+            <label>AOI total % — auto</label>
             <input type="number" value={autoAoi} readOnly
               style={{background:'var(--bg3)',color:'var(--text2)',cursor:'not-allowed'}} />
           </div>
@@ -244,6 +268,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
         </div>
       </div>
 
+      {/* Defects */}
       <div className="card" style={{marginBottom:10}}>
         <div className="section-lbl">Defect breakdown (%)</div>
         <div className="form-grid">
@@ -252,6 +277,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
               <div key={def} className="fg">
                 <label>{def}</label>
                 <input type="number" step=".0001" value={defVals[def]||''}
+                  placeholder="0"
                   onChange={function(e){setDefVals(function(prev){return Object.assign({},prev,{[def]:e.target.value});});}} />
               </div>
             );
@@ -259,36 +285,42 @@ export default function EntryPage({ globalDate, toast, onSave }) {
         </div>
       </div>
 
+      {/* Station output — uses station NAME as key */}
       <div className="card" style={{marginBottom:10}}>
         <div className="section-lbl">Station output</div>
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
               <tr>
-                <th style={{textAlign:'left',padding:'6px 8px',fontSize:11,color:'var(--text2)',borderBottom:'1px solid var(--border)'}}>Station</th>
-                <th style={{textAlign:'center',padding:'6px 8px',fontSize:11,color:'var(--text2)',borderBottom:'1px solid var(--border)'}}>Morning (m²)</th>
-                <th style={{textAlign:'center',padding:'6px 8px',fontSize:11,color:'var(--text2)',borderBottom:'1px solid var(--border)'}}>Night (m²)</th>
-                <th style={{textAlign:'center',padding:'6px 8px',fontSize:11,color:'var(--text2)',borderBottom:'1px solid var(--border)'}}>Total</th>
+                <th style={{textAlign:'left',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Station</th>
+                <th style={{textAlign:'center',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Morning 7am–7pm (m²)</th>
+                <th style={{textAlign:'center',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Night 7pm–7am (m²)</th>
+                <th style={{textAlign:'center',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Total</th>
               </tr>
             </thead>
             <tbody>
               {stationNames.map(function(stn) {
                 var m = parseFloat(stnMorning[stn.name]||0);
-                var n = parseFloat(stnNight[stn.name]||0);
+                var n2 = parseFloat(stnNight[stn.name]||0);
+                var total = m + n2;
                 return (
-                  <tr key={stn.name}>
-                    <td style={{padding:'4px 8px',fontSize:12}}>{stn.name}</td>
-                    <td style={{padding:'4px 8px'}}>
-                      <input type="number" value={stnMorning[stn.name]||''}
+                  <tr key={stn.name} style={{borderBottom:'1px solid var(--border)'}}>
+                    <td style={{padding:'5px 10px',fontSize:12,fontWeight:500,whiteSpace:'nowrap'}}>{stn.name}</td>
+                    <td style={{padding:'5px 10px',textAlign:'center'}}>
+                      <input type="number" step=".1" value={stnMorning[stn.name]||''}
+                        placeholder="0"
                         onChange={function(e){setStnMorning(function(p){return Object.assign({},p,{[stn.name]:e.target.value});});}}
-                        style={{width:80,textAlign:'center',fontSize:12,padding:'3px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                        style={{width:90,textAlign:'center',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
                     </td>
-                    <td style={{padding:'4px 8px'}}>
-                      <input type="number" value={stnNight[stn.name]||''}
+                    <td style={{padding:'5px 10px',textAlign:'center'}}>
+                      <input type="number" step=".1" value={stnNight[stn.name]||''}
+                        placeholder="0"
                         onChange={function(e){setStnNight(function(p){return Object.assign({},p,{[stn.name]:e.target.value});});}}
-                        style={{width:80,textAlign:'center',fontSize:12,padding:'3px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                        style={{width:90,textAlign:'center',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
                     </td>
-                    <td style={{padding:'4px 8px',textAlign:'center',fontSize:12,fontWeight:500,color:'var(--text)'}}>{(m+n).toFixed(0)}</td>
+                    <td style={{padding:'5px 10px',textAlign:'center',fontSize:12,fontWeight:500,color:total>0?'var(--text)':'var(--text3)'}}>
+                      {total > 0 ? total.toFixed(1) : '—'}
+                    </td>
                   </tr>
                 );
               })}
@@ -297,24 +329,26 @@ export default function EntryPage({ globalDate, toast, onSave }) {
         </div>
       </div>
 
+      {/* Materials */}
       <div className="card" style={{marginBottom:10}}>
         <div className="section-lbl">Daily material issuance</div>
         <div className="form-grid">
           <div className="fg">
             <label>Copper foil (RM)</label>
-            <input type="number" value={matIssue.copperFoil}
+            <input type="number" step=".01" value={matIssue.copperFoil}
               onChange={function(e){setMatIssue(function(m){return Object.assign({},m,{copperFoil:e.target.value});});}} />
           </div>
           <div className="fg">
             <label>Prepreg (RM)</label>
-            <input type="number" value={matIssue.prepreg}
+            <input type="number" step=".01" value={matIssue.prepreg}
               onChange={function(e){setMatIssue(function(m){return Object.assign({},m,{prepreg:e.target.value});});}} />
           </div>
         </div>
       </div>
 
+      {/* Operators */}
       <div className="card" style={{marginBottom:10}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:10}}>
           <div className="section-lbl" style={{margin:0}}>Operator attendance ({ops.length})</div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
             <button className="btn-ghost" onClick={setAllNormal} style={{fontSize:11}}>All normal</button>
@@ -322,7 +356,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
             <button className="btn-primary" onClick={setAllPublicHoliday} style={{fontSize:11,background:'#E24B4A'}}>All public holiday</button>
           </div>
         </div>
-        <div className="divider" />
+
         <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
           <input type="text" placeholder="Search operator..." value={opSearch}
             onChange={function(e){setOpSearch(e.target.value);}}
@@ -331,6 +365,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
           <button className="btn-ghost" onClick={selectAllVisible} style={{fontSize:11}}>Select all</button>
           {selectedOps.length > 0 && <button className="btn-ghost" onClick={clearSelection} style={{fontSize:11}}>Clear</button>}
         </div>
+
         {selectedOps.length > 0 && (
           <div style={{display:'flex',gap:6,marginBottom:8,flexWrap:'wrap',padding:'8px 10px',background:'rgba(55,138,221,0.07)',borderRadius:8,border:'1px solid rgba(55,138,221,0.2)'}}>
             <span style={{fontSize:11,color:'var(--text2)',alignSelf:'center'}}>Set selected to:</span>
@@ -341,7 +376,8 @@ export default function EntryPage({ globalDate, toast, onSave }) {
             <button className="btn-ghost" onClick={function(){setSelectedShift('absent');}} style={{fontSize:11}}>Absent</button>
           </div>
         )}
-        <div style={{maxHeight:400,overflowY:'auto'}}>
+
+        <div style={{maxHeight:420,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8}}>
           {ops.filter(function(op) {
             return !opSearch || op.name.toLowerCase().includes(opSearch.toLowerCase());
           }).map(function(op, i) {
@@ -349,38 +385,58 @@ export default function EntryPage({ globalDate, toast, onSave }) {
             const isSelected = selectedOps.indexOf(op.name) >= 0;
             const globalIdx = ops.findIndex(function(o){ return o.name===op.name; });
             return (
-              <div key={i} className="op-row"
-                style={{background:isSelected?'rgba(55,138,221,0.08)':'',borderRadius:isSelected?6:0,cursor:'pointer'}}
+              <div key={op.name}
+                style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
+                  borderBottom:'1px solid var(--border)',
+                  background:isSelected?'rgba(55,138,221,0.08)':'',
+                  cursor:'pointer'}}
                 onClick={function(e){ if(e.target.tagName==='SELECT') return; toggleSelectOp(op.name); }}>
-                <div style={{width:18,height:18,borderRadius:4,border:'1.5px solid '+(isSelected?'#378ADD':'var(--border2)'),
-                  background:isSelected?'#378ADD':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  {isSelected && <span style={{color:'#fff',fontSize:12,fontWeight:700,lineHeight:1}}>✓</span>}
+                <div style={{width:16,height:16,borderRadius:3,flexShrink:0,
+                  border:'1.5px solid '+(isSelected?'#378ADD':'var(--border2)'),
+                  background:isSelected?'#378ADD':'transparent',
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {isSelected && <span style={{color:'#fff',fontSize:11,fontWeight:700,lineHeight:1}}>✓</span>}
                 </div>
-                <div className="op-avatar" style={{background:AVT_BG[globalIdx%6],color:AVT_TC[globalIdx%6]}}>
+                <div style={{width:28,height:28,borderRadius:'50%',flexShrink:0,
+                  background:AVT_BG[globalIdx%6],color:AVT_TC[globalIdx%6],
+                  display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:600}}>
                   {op.name.slice(0,2).toUpperCase()}
                 </div>
-                <span className="op-name">{op.name}</span>
-                <select value={op.shift||'day'} onClick={function(e){e.stopPropagation();}}
-                  onChange={function(e){ setShift(globalIdx, e.target.value); }}>
+                <span style={{flex:1,fontSize:12,color:'var(--text)',fontWeight:500}}>{op.name}</span>
+                <select value={op.shift||'day'}
+                  onClick={function(e){e.stopPropagation();}}
+                  onChange={function(e){ setShift(globalIdx, e.target.value); }}
+                  style={{fontSize:11,padding:'3px 6px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}}>
                   {SHIFT_OPTIONS.map(function(s){
                     return <option key={s.value} value={s.value}>{s.label} ({s.hours}h)</option>;
                   })}
                 </select>
-                <span className="shift-badge" style={{background:sh.color,color:sh.tc}}>{sh.short}</span>
-                <span className="op-hours">{sh.hours}h</span>
+                <span style={{padding:'2px 7px',borderRadius:10,fontSize:10,fontWeight:500,background:sh.color,color:sh.tc,whiteSpace:'nowrap',flexShrink:0}}>
+                  {sh.short}
+                </span>
+                <span style={{fontSize:11,color:'var(--text2)',flexShrink:0,width:28,textAlign:'right'}}>{sh.hours}h</span>
               </div>
             );
           })}
           {ops.filter(function(op){return !opSearch||op.name.toLowerCase().includes(opSearch.toLowerCase());}).length===0 && (
-            <div className="empty">No operators match "{opSearch}"</div>
+            <div style={{padding:'20px',textAlign:'center',color:'var(--text2)',fontSize:12}}>No operators match "{opSearch}"</div>
           )}
         </div>
-        <div style={{marginTop:10,padding:'8px 12px',background:'var(--bg3)',borderRadius:7,display:'flex',gap:20,fontSize:12}}>
+
+        <div style={{marginTop:10,padding:'8px 12px',background:'var(--bg3)',borderRadius:7,display:'flex',gap:20,flexWrap:'wrap',fontSize:12}}>
           <span>Total manhours: <strong>{totalMh}h</strong></span>
           <span>m²/hr: <strong>{totalM2hr}</strong></span>
+          <span style={{color:'var(--text2)'}}>
+            Day: {ops.filter(function(o){return (o.shift||'day')==='day';}).length} ·
+            Night: {ops.filter(function(o){return o.shift==='night';}).length} ·
+            Self cut: {ops.filter(function(o){return o.shift==='cut_self';}).length} ·
+            Mgmt cut: {ops.filter(function(o){return o.shift==='cut_mgmt';}).length} ·
+            Absent: {ops.filter(function(o){return o.shift==='absent';}).length}
+          </span>
         </div>
       </div>
 
+      {/* Notes */}
       <div className="card" style={{marginBottom:10}}>
         <div className="section-lbl">Notes</div>
         <textarea value={fields.notes}
@@ -389,7 +445,8 @@ export default function EntryPage({ globalDate, toast, onSave }) {
           style={{width:'100%',minHeight:80,fontSize:12,padding:'8px 10px',border:'1px solid var(--border2)',borderRadius:7,background:'var(--input-bg)',color:'var(--text)',outline:'none',resize:'vertical'}} />
       </div>
 
-      <button className="btn-primary" onClick={handleSave} disabled={saving} style={{width:'100%',padding:12,fontSize:13}}>
+      <button className="btn-primary" onClick={handleSave} disabled={saving}
+        style={{width:'100%',padding:'12px',fontSize:13,borderRadius:8}}>
         {saving ? 'Saving...' : 'Save entry — ' + globalDate}
       </button>
     </div>
