@@ -1,0 +1,538 @@
+import { useState, useMemo } from 'react';
+import * as XLSX from 'xlsx';
+import { Bar, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js';
+import { storageGet, storageSet } from '../../utils/storage';
+import { daysAgo } from '../../utils/constants';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
+
+const MY_SECTION = 'Fac2_Masslam';
+
+const DEFECT_COLORS = {
+  'Dent':    '#378ADD',
+  'Wrinkle': '#EF9F27',
+  'Scratch': '#E24B4A',
+  'Whitish': '#5DCAA5',
+  'Void':    '#7F77DD',
+  'Others':  '#888780',
+};
+
+function mapDefect(reason) {
+  if (!reason) return 'Others';
+  const upper = reason.toString().toUpperCase().trim();
+  if (upper === 'DENT')    return 'Dent';
+  if (upper === 'WRINKLE') return 'Wrinkle';
+  if (upper === 'WHITISH') return 'Whitish';
+  if (upper === 'VOID')    return 'Void';
+  if (upper.includes('SCRATCH')) return 'Scratch';
+  return 'Others';
+}
+
+export default function ScrapPage({ darkMode, toast }) {
+  const [data, setData]         = useState(null);
+  const [fileName, setFileName] = useState('');
+  const [outputM2, setOutputM2] = useState('');
+  const [pushing, setPushing]   = useState(false);
+  const [pushed, setPushed]     = useState(false);
+  const [fileDate, setFileDate] = useState('');
+  const [dragging, setDragging] = useState(false);
+
+  const gridColor = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickColor = darkMode ? '#9499b0' : '#666';
+
+  function parseExcel(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const wb   = XLSX.read(e.target.result, { type: 'binary', raw: false });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+      console.log('ROW0:', JSON.stringify(rows[5]));
+      console.log('ROW250:', JSON.stringify(rows[255]));
+
+      const headerRow = rows.findIndex(function(r) {
+        return r.some(function(c) { return String(c).includes('Station Name'); });
+      });
+      if (headerRow < 0) { toast('Cannot find header row'); return; }
+
+      const dataRows = rows.slice(headerRow + 1);
+      const parsed = dataRows.map(function(r) {
+        return {
+          station:    String(r[0] || '').trim(),
+          reason:     String(r[5] || '').trim(),
+          scrapQty:   parseFloat(r[6]) || 0,
+          scrapArea:  parseFloat(r[7]) || 0,
+          storageQty: parseFloat(r[8]) || 0,
+          storageArea:parseFloat(r[9]) || 0,
+        };
+      });
+
+      console.log('All stations:', parsed.map(function(r){return r.station;}).slice(0,5));
+      console.log('Last 5 stations:', parsed.map(function(r){return r.station;}).slice(-5));
+      const grandTotalRow = parsed.find(function(r) {
+        return r.station.toLowerCase().replace(':','').trim() === 'grand total';
+      });
+      const grandTotalScrapArea = grandTotalRow ? grandTotalRow.scrapArea : 0;
+      console.log('Grand total row found:', grandTotalRow, 'scrapArea:', grandTotalScrapArea);
+
+      const myRows = parsed.filter(function(r) {
+        return r.station.trim() === MY_SECTION;
+      });
+      const myTotalScrapArea = myRows.reduce(function(s,r){return s+r.scrapArea;},0);
+      console.log('My rows found:', myRows.length, 'myTotalScrapArea:', myTotalScrapArea);
+
+      const myDefects = {};
+      myRows.forEach(function(r) {
+        const cat = mapDefect(r.reason);
+        if (!myDefects[cat]) myDefects[cat] = 0;
+        myDefects[cat] += r.scrapArea;
+      });
+
+      const sectionTotals = {};
+      parsed.forEach(function(r) {
+        if (r.station.includes('Total:') && !r.station.includes('Grand')) {
+          const name = r.station.replace(' Total:', '').trim();
+          sectionTotals[name] = {
+            scrapArea: r.scrapArea,
+          };
+        }
+      });
+
+      const dateMatch = file.name.match(/BeginDate(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) setFileDate(dateMatch[1]);
+
+      setData({
+        myRows,
+        myDefects,
+        myTotalScrapArea,
+        grandTotalScrapArea,
+        sectionTotals,
+      });
+      setFileName(file.name);
+      setPushed(false);
+      toast('Loaded — ' + myRows.length + ' Masslam records · Grand total: ' + grandTotalScrapArea.toFixed(4) + ' m²');
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) parseExcel(file);
+  }
+
+  function onFileChange(e) {
+    const file = e.target.files[0];
+    if (file) parseExcel(file);
+  }
+
+  const outputNum = parseFloat(outputM2) || 0;
+  const denom = outputNum + (data ? data.grandTotalScrapArea : 0);
+  console.log('DEBUG outputNum:', outputNum, 'grandTotal:', data ? data.grandTotalScrapArea : 'no data', 'denom:', denom, 'myTotalScrapArea:', data ? data.myTotalScrapArea : 'no data');
+
+  function calcPct(scrapArea) {
+    if (denom <= 0) return 0;
+    return parseFloat((scrapArea / denom * 100).toFixed(4));
+  }
+
+  const totalScrapPct = useMemo(function() {
+    return data ? calcPct(data.myTotalScrapArea) : 0;
+  }, [outputNum, data]);
+
+  const defectChartData = useMemo(function() {
+    if (!data) return {labels:[], datasets:[]};
+    const labels = Object.keys(data.myDefects);
+    return {
+      labels: labels,
+      datasets: [{
+        data: labels.map(function(k){ return parseFloat(calcPct(data.myDefects[k]).toFixed(4)); }),
+        backgroundColor: labels.map(function(k){ return DEFECT_COLORS[k]||'#888780'; }),
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    };
+  }, [outputNum, data]);
+
+  async function pushToYesterday() {
+    if (!outputM2) { toast('Please key in output m² first'); return; }
+    if (!data)     { toast('No data loaded'); return; }
+    setPushing(true);
+
+    const yesterday = daysAgo(1);
+    const existing  = await storageGet('day:' + yesterday);
+
+    const defPct = {};
+    Object.entries(data.myDefects).forEach(function(entry) {
+      defPct[entry[0]] = calcPct(entry[1]);
+    });
+
+    const defectsObj = {
+      Dent:    parseFloat((defPct['Dent']   ||0).toFixed(4)),
+      Wrinkle: parseFloat((defPct['Wrinkle']||0).toFixed(4)),
+      Scratch: parseFloat((defPct['Scratch']||0).toFixed(4)),
+      Whitish: parseFloat((defPct['Whitish']||0).toFixed(4)),
+      Void:    parseFloat((defPct['Void']   ||0).toFixed(4)),
+      Others:  parseFloat((defPct['Others'] ||0).toFixed(4)),
+    };
+
+    const updated = Object.assign({}, existing || {}, {
+      scrap:   parseFloat(totalScrapPct.toFixed(4)),
+      defects: defectsObj,
+    });
+
+    const ok = await storageSet('day:' + yesterday, updated);
+    setPushing(false);
+    if (ok) {
+      setPushed(true);
+      toast('Pushed to ' + yesterday + ' daily entry!');
+    } else {
+      toast('Error pushing data');
+    }
+  }
+
+  const defectLabels  = data ? Object.keys(data.myDefects) : [];
+  const defectColors  = defectLabels.map(function(k){ return DEFECT_COLORS[k] || '#888780'; });
+  const sectionLabels = data ? Object.keys(data.sectionTotals).map(function(k){ return k.replace('Fac2_','').replace('GP_',''); }) : [];
+  const sectionColors = sectionLabels.map(function(l){ return l.toLowerCase().includes('masslam') ? '#E24B4A' : 'rgba(55,138,221,0.5)'; });
+
+  return (
+    <div>
+      {!data ? (
+        <div>
+          <div style={{background:'#185FA5',borderRadius:10,padding:'16px 20px',marginBottom:14,color:'#fff'}}>
+            <div style={{fontSize:11,opacity:.8,marginBottom:4,textTransform:'uppercase',letterSpacing:'.06em'}}>Scrap tracker</div>
+            <div style={{fontSize:20,fontWeight:500}}>Daily scrap analysis</div>
+            <div style={{fontSize:12,opacity:.8,marginTop:4}}>Upload your daily scrap report · Fac2_Masslam prioritized · Push to daily entry</div>
+          </div>
+
+          <div
+            onDragOver={function(e){e.preventDefault();setDragging(true);}}
+            onDragLeave={function(){setDragging(false);}}
+            onDrop={onDrop}
+            onClick={function(){document.getElementById('scrap-file-input').click();}}
+            style={{border:'2px dashed '+(dragging?'#378ADD':'var(--border2)'),borderRadius:12,padding:'60px 20px',textAlign:'center',background:dragging?'rgba(55,138,221,0.05)':'var(--bg3)',transition:'all .2s',cursor:'pointer'}}>
+            <div style={{fontSize:40,marginBottom:12}}>📊</div>
+            <div style={{fontSize:15,fontWeight:500,color:'var(--text)',marginBottom:8}}>Drop your scrap report Excel here</div>
+            <div style={{fontSize:12,color:'var(--text2)',marginBottom:16}}>Supports .xlsx · Processed locally · Zero bandwidth</div>
+            <button className="btn-primary" style={{pointerEvents:'none'}}>Or click to browse</button>
+            <input id="scrap-file-input" type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={onFileChange} />
+          </div>
+
+          <div style={{marginTop:16,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+            {[
+              {icon:'🔒',title:'100% private',desc:'File never leaves your browser'},
+              {icon:'🎯',title:'Masslam focused',desc:'Prioritizes your section in all cards'},
+              {icon:'🔄',title:'Push to entry',desc:'One click saves to yesterday\'s daily entry'},
+            ].map(function(item){
+              return (
+                <div key={item.title} className="card" style={{textAlign:'center',padding:'16px 12px'}}>
+                  <div style={{fontSize:24,marginBottom:8}}>{item.icon}</div>
+                  <div style={{fontSize:12,fontWeight:500,color:'var(--text)',marginBottom:4}}>{item.title}</div>
+                  <div style={{fontSize:11,color:'var(--text2)'}}>{item.desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:'var(--text)'}}>{fileName}</div>
+              <div style={{fontSize:11,color:'var(--text2)'}}>
+                {fileDate && 'Report date: ' + fileDate + ' · '}
+                Grand total scrap: {data.grandTotalScrapArea.toFixed(4)} m²
+              </div>
+            </div>
+            <button className="btn-ghost" onClick={function(){setData(null);setFileName('');setPushed(false);}}>
+              Load new file
+            </button>
+          </div>
+
+          {/* Push to yesterday */}
+          <div className="card" style={{marginBottom:12,border:'1px solid '+(pushed?'#1D9E75':'#378ADD'),background:pushed?'rgba(29,158,117,0.05)':'rgba(55,138,221,0.05)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:500,color:'var(--text)',marginBottom:4}}>
+                  Push scrap data to daily entry
+                </div>
+                <div style={{fontSize:11,color:'var(--text2)'}}>
+                  This will update <strong>yesterday ({daysAgo(1)})</strong> scrap %, AOI % and defect breakdown
+                </div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                <div className="fg" style={{margin:0}}>
+                  <label style={{fontSize:11,color:'var(--text2)',display:'block',marginBottom:4}}>Yesterday output (m²)</label>
+                  <input
+                    type="number"
+                    value={outputM2}
+                    placeholder="e.g. 3200"
+                    onChange={function(e){setOutputM2(e.target.value);setPushed(false);}}
+                    style={{width:140,fontSize:12,padding:'6px 10px',border:'1px solid var(--border2)',borderRadius:7,background:'var(--input-bg)',color:'var(--text)',outline:'none'}}
+                  />
+                </div>
+                {outputM2 && (
+                  <div style={{fontSize:11,color:'var(--text2)',textAlign:'right'}}>
+                    <div>Denom: {(parseFloat(outputM2)+data.grandTotalScrapArea).toFixed(2)} m²</div>
+                    <div style={{color:'#E24B4A',fontWeight:500}}>Masslam scrap: {totalScrapPct.toFixed(4)}%</div>
+                  </div>
+                )}
+                <button
+                  className="btn-primary"
+                  onClick={pushToYesterday}
+                  disabled={pushing || pushed || !outputM2}
+                  style={{background:pushed?'#1D9E75':pushing?'#888':'#185FA5',minWidth:120}}>
+                  {pushed ? '✓ Pushed!' : pushing ? 'Pushing...' : '→ Push to ' + daysAgo(1)}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Masslam KPI cards */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
+            <div className="kpi-card" style={{border:'2px solid #E24B4A'}}>
+              <div className="kpi-icon" style={{background:'#FCEBEB',color:'#A32D2D'}}>🏭</div>
+              <div className="kpi-label">Masslam scrap %</div>
+              <div className="kpi-val" style={{color:'#E24B4A'}}>{outputM2?totalScrapPct.toFixed(4)+'%':'—'}</div>
+              <div className="kpi-footer text-muted">{data.myTotalScrapArea.toFixed(4)} m² scrapped</div>
+              <div className="kpi-bar" style={{background:'#E24B4A'}} />
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-icon" style={{background:'#FAEEDA',color:'#854F0B'}}>📋</div>
+              <div className="kpi-label">Total scrap records</div>
+              <div className="kpi-val">{data.myRows.length}</div>
+              <div className="kpi-footer text-muted">Masslam section</div>
+              <div className="kpi-bar" style={{background:'#EF9F27'}} />
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-icon" style={{background:'#E6F1FB',color:'#185FA5'}}>📦</div>
+              <div className="kpi-label">Grand total scrap</div>
+              <div className="kpi-val">{data.grandTotalScrapArea.toFixed(2)}</div>
+              <div className="kpi-footer text-muted">m² all sections</div>
+              <div className="kpi-bar" style={{background:'#378ADD'}} />
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-icon" style={{background:'#E1F5EE',color:'#0F6E56'}}>🔢</div>
+              <div className="kpi-label">Defect types</div>
+              <div className="kpi-val">{Object.keys(data.myDefects).length}</div>
+              <div className="kpi-footer text-muted">in Masslam</div>
+              <div className="kpi-bar" style={{background:'#1D9E75'}} />
+            </div>
+          </div>
+
+          <div key={'charts-'+outputM2} style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+            {/* Masslam defect breakdown */}
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <div className="card-title">Masslam defect breakdown</div>
+                  <div className="card-sub">{outputM2?'% = scrapArea / (output + grandTotal)':'Key in output to see %'}</div>
+                </div>
+              </div>
+              <div style={{maxHeight:280,overflowY:'auto'}}>
+                {Object.entries(data.myDefects).sort(function(a,b){return b[1]-a[1];}).map(function(entry){
+                  const name=entry[0], area=entry[1];
+                  const pct = calcPct(area);
+                  const maxArea = Math.max.apply(null, Object.values(data.myDefects));
+                  return (
+                    <div key={name} style={{marginBottom:8}}>
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
+                        <span style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{width:10,height:10,borderRadius:2,background:DEFECT_COLORS[name]||'#888',flexShrink:0,display:'inline-block'}}></span>
+                          {name}
+                        </span>
+                        <span style={{fontWeight:500,color:DEFECT_COLORS[name]||'#888'}}>
+                          {area.toFixed(4)} m² {outputM2?'('+pct.toFixed(4)+'%)':''}
+                        </span>
+                      </div>
+                      <div style={{height:6,background:'var(--bg3)',borderRadius:3}}>
+                        <div style={{height:'100%',width:(area/maxArea*100).toFixed(1)+'%',background:DEFECT_COLORS[name]||'#888',borderRadius:3}}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Donut chart */}
+            <div className="card">
+              <div className="card-head"><div><div className="card-title">Masslam defect distribution</div><div className="card-sub">By scrap area (m²)</div></div></div>
+              <div style={{height:220}}>
+                <Doughnut
+                  key={'donut-'+outputNum}
+                  data={defectChartData}
+                  options={{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,color:tickColor}},tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+ctx.parsed.toFixed(4)+'%';}}}}}}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section comparison bar chart */}
+          <div className="card" style={{marginBottom:12}}>
+            <div className="card-head">
+              <div>
+                <div className="card-title">Section comparison — scrap area (m²)</div>
+                <div className="card-sub">Red = Masslam (your section) · Blue = other sections</div>
+              </div>
+            </div>
+            <div style={{height:220}}>
+              <Bar
+                key={'secbar-'+outputNum}
+                data={{
+                  labels: sectionLabels,
+                  datasets:[{
+                    label:'Scrap area (m²)',
+                    data: data ? Object.values(data.sectionTotals).map(function(s){ return parseFloat(s.scrapArea.toFixed(4)); }) : [],
+                    backgroundColor: sectionColors,
+                    borderRadius: 4,
+                  }]
+                }}
+                options={{
+                  responsive:true,maintainAspectRatio:false,
+                  plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(4)+' m²';}}}},
+                  scales:{
+                    x:{ticks:{font:{size:9},autoSkip:false,maxRotation:45,color:tickColor},grid:{display:false}},
+                    y:{ticks:{font:{size:9},color:tickColor,callback:function(v){return v+' m²';}},grid:{color:gridColor}}
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Top part numbers */}
+          {(function(){
+            const pnMap = {};
+            data.myRows.forEach(function(r) {
+              if (!r.inPlantItem) return;
+              if (!pnMap[r.inPlantItem]) pnMap[r.inPlantItem] = { pn: r.inPlantItem, totalArea: 0, defects: {} };
+              pnMap[r.inPlantItem].totalArea += r.scrapArea;
+              const cat = mapDefect(r.reason);
+              if (!pnMap[r.inPlantItem].defects[cat]) pnMap[r.inPlantItem].defects[cat] = 0;
+              pnMap[r.inPlantItem].defects[cat] += r.scrapArea;
+            });
+
+            const ranked = Object.values(pnMap).sort(function(a,b){return b.totalArea-a.totalArea;}).slice(0,10);
+            if (!ranked.length) return null;
+
+            const maxArea = ranked[0].totalArea;
+            const DCOLORS = {'Dent':'#378ADD','Wrinkle':'#EF9F27','Scratch':'#E24B4A','Whitish':'#5DCAA5','Void':'#7F77DD','Others':'#888780'};
+
+            const barData = {
+              labels: ranked.map(function(r){ return r.pn.length>18?r.pn.slice(0,18)+'...':r.pn; }),
+              datasets: ['Dent','Wrinkle','Scratch','Whitish','Void','Others'].map(function(def){
+                return {
+                  label: def,
+                  data: ranked.map(function(r){ return parseFloat((r.defects[def]||0).toFixed(4)); }),
+                  backgroundColor: DCOLORS[def],
+                  stack: 's',
+                  borderRadius: 2,
+                };
+              })
+            };
+
+            return (
+              <div className="card" style={{marginBottom:12}}>
+                <div className="card-head">
+                  <div>
+                    <div className="card-title">Top {ranked.length} worst part numbers</div>
+                    <div className="card-sub">Ranked by total scrap area (m²) · stacked by defect type</div>
+                  </div>
+                </div>
+                <div className="legend-row">
+                  {['Dent','Wrinkle','Scratch','Whitish','Void','Others'].map(function(d){
+                    return <span key={d} className="leg"><span className="leg-dot" style={{background:DCOLORS[d]}}></span>{d}</span>;
+                  })}
+                </div>
+                <div style={{height:280}}>
+                  <Bar
+                    key={'topbar-'+outputNum}
+                    data={barData}
+                    options={{
+                      responsive:true,maintainAspectRatio:false,
+                      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+ctx.parsed.y.toFixed(4)+' m²';},footer:function(items){var t=items.reduce(function(s,i){return s+i.parsed.y;},0);return 'Total: '+t.toFixed(4)+' m²'+(outputM2?' ('+calcPct(t).toFixed(4)+'%)':'');}}}},
+                      scales:{
+                        x:{stacked:true,ticks:{font:{size:9},autoSkip:false,maxRotation:45,color:tickColor},grid:{display:false}},
+                        y:{stacked:true,ticks:{font:{size:9},color:tickColor,callback:function(v){return v+' m²';}},grid:{color:gridColor}}
+                      }
+                    }}
+                  />
+                </div>
+
+                <div style={{marginTop:14}}>
+                  {ranked.map(function(item, i){
+                    const topDefect = Object.entries(item.defects).sort(function(a,b){return b[1]-a[1];})[0];
+                    const pct = calcPct(item.totalArea);
+                    return (
+                      <div key={item.pn} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+                        <div style={{width:24,height:24,borderRadius:'50%',background:i===0?'#FCEBEB':i===1?'#FAEEDA':'#F1EFE8',color:i===0?'#791F1F':i===1?'#633806':'#444',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,flexShrink:0}}>{i+1}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:500,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.pn}</div>
+                          <div style={{fontSize:10,color:'var(--text2)'}}>
+                            Top defect: <span style={{color:DCOLORS[topDefect[0]],fontWeight:500}}>{topDefect[0]}</span> ({topDefect[1].toFixed(4)} m²)
+                            {' · '}{Object.keys(item.defects).length} defect types
+                          </div>
+                        </div>
+                        <div style={{textAlign:'right',flexShrink:0}}>
+                          <div style={{fontSize:13,fontWeight:500,color:'#E24B4A'}}>{item.totalArea.toFixed(4)} m²</div>
+                          {outputM2 && <div style={{fontSize:10,color:'var(--text2)'}}>{pct.toFixed(4)}%</div>}
+                        </div>
+                        <div style={{width:80,flexShrink:0}}>
+                          <div style={{height:6,background:'var(--bg3)',borderRadius:3}}>
+                            <div style={{height:'100%',width:(item.totalArea/maxArea*100).toFixed(1)+'%',background:'#E24B4A',borderRadius:3}}></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Detail table */}
+          <div className="card">
+            <div className="card-head"><div><div className="card-title">Masslam scrap detail</div><div className="card-sub">{data.myRows.length} records</div></div></div>
+            <div className="tbl-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Part number</th>
+                    <th>Lot</th>
+                    <th>Defect</th>
+                    <th>Category</th>
+                    <th>Scrap qty</th>
+                    <th>Scrap area (m²)</th>
+                    {outputM2 && <th>Scrap %</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.myRows.map(function(r, i) {
+                    const cat = mapDefect(r.reason);
+                    return (
+                      <tr key={i}>
+                        <td style={{fontSize:11,whiteSpace:'nowrap'}}>{r.inPlantItem}</td>
+                        <td style={{fontSize:11,whiteSpace:'nowrap'}}>{r.lotsNo}</td>
+                        <td style={{fontSize:11,color:'var(--text2)'}}>{r.reason}</td>
+                        <td>
+                          <span style={{padding:'2px 7px',borderRadius:10,fontSize:10,fontWeight:500,
+                            background:(DEFECT_COLORS[cat]||'#888')+'22',
+                            color:DEFECT_COLORS[cat]||'#888'}}>
+                            {cat}
+                          </span>
+                        </td>
+                        <td style={{fontSize:11,textAlign:'right'}}>{r.scrapQty}</td>
+                        <td style={{fontSize:11,textAlign:'right',fontWeight:500}}>{r.scrapArea.toFixed(4)}</td>
+                        {outputM2 && <td style={{fontSize:11,textAlign:'right',color:'#E24B4A'}}>{calcPct(r.scrapArea).toFixed(4)}%</td>}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

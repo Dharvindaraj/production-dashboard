@@ -13,6 +13,8 @@ import EtchRatePage from './components/pages/EtchRatePage';
 import PersonalOTPage from './components/pages/PersonalOTPage';
 import SettingsPage from './components/pages/SettingsPage';
 import WipPage from './components/pages/WipPage';
+import ScrapPage from './components/pages/ScrapPage';
+import ScrapHistoryPage from './components/pages/ScrapHistoryPage';
 import EditModal from './components/EditModal';
 import { getAllDays } from './utils/storage';
 import { tod, PAGE_TITLES } from './utils/constants';
@@ -51,11 +53,8 @@ export default function App() {
   useEffect(function() { refreshDays(); }, []);
 
   const pageProps = {
-    allDays: allDays,
-    globalDate: globalDate,
-    toast: toast,
-    onSave: refreshDays,
-    darkMode: darkMode
+    allDays: allDays, globalDate: globalDate,
+    toast: toast, onSave: refreshDays, darkMode: darkMode
   };
 
   return (
@@ -82,7 +81,9 @@ export default function App() {
           {page === 'personalot' && <PersonalOTPage {...pageProps} />}
           {page === 'history'    && <HistoryPage {...pageProps} onEdit={setEditDate} />}
           {page === 'settings'   && <SettingsPage {...pageProps} />}
-          {page === 'wip'       && <WipPage {...pageProps} />}
+          {page === 'wip'        && <WipPage {...pageProps} />}
+          {page === 'scrap'      && <ScrapPage {...pageProps} />}
+          {page === 'scraphist'  && <ScrapHistoryPage {...pageProps} />}
         </div>
       </div>
       {editDate && (
@@ -100,16 +101,14 @@ export default function App() {
           { key: 'overview',   icon: 'ti-layout-dashboard', label: 'Overview' },
           { key: 'entry',      icon: 'ti-edit',             label: 'Entry' },
           { key: 'wip',        icon: 'ti-clipboard-list',   label: 'WIP' },
-          { key: 'etchrate',   icon: 'ti-chart-dots',       label: 'Etch' },
+          { key: 'scrap',      icon: 'ti-alert-triangle',   label: 'Scrap' },
           { key: 'personalot', icon: 'ti-user-clock',       label: 'My OT' },
         ].map(function(item) {
           return (
-            <button
-              key={item.key}
+            <button key={item.key}
               className={page === item.key ? 'mobile-nav-btn active' : 'mobile-nav-btn'}
               onClick={function() { setPage(item.key); }}
-              aria-label={item.label}
-            >
+              aria-label={item.label}>
               <i className={'ti ' + item.icon} aria-hidden="true" />
               {item.label}
             </button>

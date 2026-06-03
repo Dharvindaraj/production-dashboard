@@ -1,7 +1,7 @@
 export default function Sidebar({ page, setPage, darkMode, setDarkMode }) {
   const navItems = [
     { section: 'Production' },
-    { key: 'overview',   icon: 'ti-layout-dashboard', label: 'Overview' },
+    { key: 'overview',   icon: 'ti-layout-dashboard', label: 'Masslam Dashboard' },
     { key: 'entry',      icon: 'ti-edit',             label: 'Daily entry' },
     { key: 'stations',   icon: 'ti-grid-dots',        label: 'Stations' },
     { key: 'downtime',   icon: 'ti-clock-pause',      label: 'Downtime' },
@@ -11,10 +11,13 @@ export default function Sidebar({ page, setPage, darkMode, setDarkMode }) {
     { key: 'materials',  icon: 'ti-packages',         label: 'Materials' },
     { key: 'etchrate',   icon: 'ti-chart-dots',       label: 'Etch rate SPC' },
     { key: 'history',    icon: 'ti-table',            label: 'History log' },
+    { section: 'Quality' },
+    { key: 'scrap',      icon: 'ti-alert-triangle',   label: 'Scrap tracker' },
+    { key: 'scraphist',  icon: 'ti-chart-bar',        label: 'Scrap history' },
+    { section: 'Operations' },
+    { key: 'wip',        icon: 'ti-clipboard-list',   label: 'WIP tracker' },
     { section: 'Personal' },
     { key: 'personalot', icon: 'ti-user-clock',       label: 'My OT' },
-    { section: 'Production' },
-    { key: 'wip',        icon: 'ti-clipboard-list',  label: 'WIP tracker' },
     { section: 'Admin' },
     { key: 'settings',   icon: 'ti-adjustments',      label: 'Settings' },
   ];
@@ -34,11 +37,9 @@ export default function Sidebar({ page, setPage, darkMode, setDarkMode }) {
           return <div key={idx} className="nav-sec">{item.section}</div>;
         }
         return (
-          <button
-            key={item.key}
+          <button key={item.key}
             className={page === item.key ? 'nav-btn active' : 'nav-btn'}
-            onClick={function() { setPage(item.key); }}
-          >
+            onClick={function() { setPage(item.key); }}>
             <i className={'ti ' + item.icon} aria-hidden="true" />
             {item.label}
           </button>

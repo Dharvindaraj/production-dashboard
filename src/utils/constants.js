@@ -53,6 +53,8 @@ export const PAGE_TITLES = {
   history:    'History log',
   settings:   'Settings',
   wip:        'WIP Tracker',
+  scrap:      'Scrap Tracker',
+  scraphist:  'Scrap History',
 };
 
 export function tod(d) {
