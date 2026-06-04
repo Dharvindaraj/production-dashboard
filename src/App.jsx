@@ -15,6 +15,8 @@ import SettingsPage from './components/pages/SettingsPage';
 import WipPage from './components/pages/WipPage';
 import ScrapPage from './components/pages/ScrapPage';
 import ScrapHistoryPage from './components/pages/ScrapHistoryPage';
+import MaterialTrackerPage from './components/pages/MaterialTrackerPage';
+import MaterialHistoryPage from './components/pages/MaterialHistoryPage';
 import EditModal from './components/EditModal';
 import { getAllDays } from './utils/storage';
 import { tod, PAGE_TITLES } from './utils/constants';
@@ -84,6 +86,8 @@ export default function App() {
           {page === 'wip'        && <WipPage {...pageProps} />}
           {page === 'scrap'      && <ScrapPage {...pageProps} />}
           {page === 'scraphist'  && <ScrapHistoryPage {...pageProps} />}
+          {page === 'mattracker' && <MaterialTrackerPage {...pageProps} />}
+          {page === 'mathist'    && <MaterialHistoryPage {...pageProps} />}
         </div>
       </div>
       {editDate && (

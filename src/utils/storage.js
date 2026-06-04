@@ -290,6 +290,7 @@ export async function saveScrapHistory(date, entry) {
     defect_others:      entry.defectOthers,
     section_totals:     entry.sectionTotals,
     pn_breakdown:       entry.pnBreakdown,
+    others_breakdown:   entry.othersBreakdown || {},
     updated_at:         new Date().toISOString(),
   }, { onConflict: 'report_date' });
   return !error;
@@ -300,6 +301,32 @@ export async function getScrapHistory(from, to) {
     .from('scrap_history').select('*')
     .gte('report_date', from).lte('report_date', to)
     .order('report_date', { ascending: true });
+  if (error || !data) return [];
+  return data;
+}
+
+export async function saveMaterialHistory(month, entry) {
+  const { error } = await supabase.from('material_history').upsert({
+    report_month:          month,
+    output_m2:             entry.outputM2,
+    copper_foil_rm:        entry.copperFoilRm,
+    prepreg_rm:            entry.prepregRm,
+    copper_foil_rm_per_m2: entry.copperFoilRmPerM2,
+    prepreg_rm_per_m2:     entry.prepregRmPerM2,
+    total_rm:              entry.totalRm,
+    total_rm_per_m2:       entry.totalRmPerM2,
+    daily_breakdown:       entry.dailyBreakdown,
+    updated_at:            new Date().toISOString(),
+  }, { onConflict: 'report_month' });
+  return !error;
+}
+
+export async function getMaterialHistory(from, to) {
+  const { data, error } = await supabase
+    .from('material_history').select('*')
+    .gte('report_month', from)
+    .lte('report_month', to)
+    .order('report_month', { ascending: true });
   if (error || !data) return [];
   return data;
 }

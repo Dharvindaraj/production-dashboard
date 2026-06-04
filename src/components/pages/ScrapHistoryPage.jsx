@@ -62,6 +62,20 @@ export default function ScrapHistoryPage({ darkMode }) {
     Others:  history.length ? history.reduce(function(s,d){return s+(parseFloat(d.defect_others)||0);},0)/history.length : 0,
   };
 
+  const allOthersMap = {};
+  history.forEach(function(d) {
+    if (!d.others_breakdown) return;
+    Object.entries(d.others_breakdown).forEach(function(entry) {
+      var reason = entry[0], area = entry[1];
+      if (!allOthersMap[reason]) allOthersMap[reason] = 0;
+      allOthersMap[reason] += area;
+    });
+  });
+  const othersRanked = Object.entries(allOthersMap)
+    .sort(function(a,b){return b[1]-a[1];})
+    .slice(0,10);
+  const othersTotalArea = Object.values(allOthersMap).reduce(function(a,b){return a+b;},0);
+
   const allPnMap = {};
   history.forEach(function(d) {
     if (!d.pn_breakdown) return;
@@ -287,6 +301,63 @@ export default function ScrapHistoryPage({ darkMode }) {
               }}} />
             </div>
           </div>
+
+          {othersRanked.length > 0 && (
+            <div className="card" style={{marginBottom:12}}>
+              <div className="card-head">
+                <div>
+                  <div className="card-title">Others — defect breakdown</div>
+                  <div className="card-sub">What's contributing most to the "Others" category · accumulated period</div>
+                </div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <div>
+                  {othersRanked.map(function(entry, i){
+                    var reason=entry[0], area=entry[1];
+                    var pct = othersTotalArea>0?(area/othersTotalArea*100).toFixed(1):0;
+                    var maxArea = othersRanked[0][1];
+                    var colors = ['#E24B4A','#EF9F27','#378ADD','#7F77DD','#5DCAA5','#FF6B9D','#888780','#97C459','#FF9F43','#54A0FF'];
+                    var color = colors[i%colors.length];
+                    return (
+                      <div key={reason} style={{marginBottom:8}}>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
+                          <span style={{display:'flex',alignItems:'center',gap:6}}>
+                            <span style={{width:8,height:8,borderRadius:2,background:color,flexShrink:0,display:'inline-block'}}></span>
+                            {reason}
+                          </span>
+                          <span style={{fontWeight:500,color:color}}>{area.toFixed(4)} m² ({pct}%)</span>
+                        </div>
+                        <div style={{height:5,background:'var(--bg3)',borderRadius:3}}>
+                          <div style={{height:'100%',width:(area/maxArea*100).toFixed(1)+'%',background:color,borderRadius:3}}></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{height:260}}>
+                  <Bar
+                    data={{
+                      labels: othersRanked.map(function(e){return e[0].length>15?e[0].slice(0,15)+'...':e[0];}),
+                      datasets:[{
+                        label:'Scrap area (m²)',
+                        data: othersRanked.map(function(e){return parseFloat(e[1].toFixed(4));}),
+                        backgroundColor: ['#E24B4A','#EF9F27','#378ADD','#7F77DD','#5DCAA5','#FF6B9D','#888780','#97C459','#FF9F43','#54A0FF'],
+                        borderRadius: 4,
+                      }]
+                    }}
+                    options={{
+                      responsive:true,maintainAspectRatio:false,
+                      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(4)+' m²';}}}},
+                      scales:{
+                        x:{ticks:{font:{size:8},autoSkip:false,maxRotation:45,color:tickColor},grid:{display:false}},
+                        y:{ticks:{font:{size:9},color:tickColor,callback:function(v){return v+' m²';}},grid:{color:gridColor}}
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {rankedPns.length > 0 && (
             <div className="card" style={{marginBottom:12}}>

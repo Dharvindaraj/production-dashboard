@@ -31,6 +31,11 @@ function mapDefect(reason) {
   return 'Others';
 }
 
+function isOthers(reason) {
+  if (!reason) return false;
+  const upper = reason.toString().toUpperCase().trim();
+  return upper !== 'DENT' && upper !== 'WRINKLE' && upper !== 'WHITISH' && upper !== 'VOID' && !upper.includes('SCRATCH');
+}
 export default function ScrapPage({ darkMode, toast }) {
   const [data, setData]         = useState(null);
   const [fileName, setFileName] = useState('');
@@ -111,10 +116,16 @@ export default function ScrapPage({ darkMode, toast }) {
       });
 
       var myDefects = {};
+      var othersBreakdown = {};
       myRows.forEach(function(r) {
         var cat = mapDefect(r.reason);
         if (!myDefects[cat]) myDefects[cat] = 0;
         myDefects[cat] += r.scrapArea;
+        if (isOthers(r.reason) && r.reason && r.scrapArea > 0) {
+          var reason = r.reason.trim();
+          if (!othersBreakdown[reason]) othersBreakdown[reason] = 0;
+          othersBreakdown[reason] += r.scrapArea;
+        }
       });
 
       var myTotalScrapArea = myRows.reduce(function(s,r){return s+r.scrapArea;},0);
@@ -130,6 +141,7 @@ export default function ScrapPage({ darkMode, toast }) {
         myTotalScrapArea,
         grandTotalScrapArea,
         sectionTotals,
+        othersBreakdown,
       });
       setFileName(file.name);
       setPushed(false);
