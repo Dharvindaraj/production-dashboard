@@ -12,12 +12,12 @@ const PLATEN_NAMES = ['Platen 01','Platen 02','Platen 03','Platen 04','Platen 05
 const SENSOR_NAMES = ['PrdSensor 01','PrdSensor 02','PrdSensor 03'];
 
 const PLATEN_COLORS = [
-  '#378ADD','#E24B4A','#5DCAA5','#EF9F27','#7F77DD',
+  '#378ADD','#E24B4A','#D63031','#EF9F27','#7F77DD',
   '#FF6B9D','#97C459','#FF9F43','#54A0FF','#FD79A8','#00B894'
 ];
 const SENSOR_COLORS = ['#00CEC9','#A29BFE','#FDCB6E'];
 const TEMP_SET_COLOR = '#636E72';
-const PRESSURE_COLOR = '#2D3436';
+const PRESSURE_COLOR = '#F9CA24';
 const VACUUM_COLOR   = '#B2BEC3';
 
 export default function PressProfilePage({ darkMode }) {
@@ -29,6 +29,7 @@ export default function PressProfilePage({ darkMode }) {
   const [durationTemp, setDurationTemp] = useState('');
   const [heatT1, setHeatT1]         = useState('');
   const [heatT2, setHeatT2]         = useState('');
+  const [timeCutoff, setTimeCutoff] = useState('');
   const chartRef = useRef(null);
 
   const gridColor = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
@@ -96,7 +97,8 @@ export default function PressProfilePage({ darkMode }) {
 
   const chartData = useMemo(function() {
     if (!rawData) return null;
-    var sampled = rawData.filter(function(_,i){ return i % 5 === 0; });
+    var cutoffSec = timeCutoff ? parseFloat(timeCutoff)*60 : Infinity;
+    var sampled = rawData.filter(function(r,i){ return i % 5 === 0 && r.sec <= cutoffSec; });
     var labels   = sampled.map(function(r){ return r.min.toFixed(1); });
 
     var datasets = [];
@@ -140,14 +142,14 @@ export default function PressProfilePage({ darkMode }) {
 
     if (visible.pressure) datasets.push({
       label:'Pressure (kgf/cm²)',
-      data: sampled.map(function(r){ return r.pressure; }),
+      data: sampled.map(function(r){ return r.pressure > 0 ? r.pressure : null; }),
+      spanGaps: false,
       borderColor: PRESSURE_COLOR,
-      borderWidth: 2,
+      borderWidth: 2.5,
       pointRadius: 0,
       fill: false,
-      tension: 0,
+      tension: 0.2,
       yAxisID: 'yRight',
-      borderDash: [4,2],
     });
 
     if (visible.vacuum) datasets.push({
@@ -163,7 +165,7 @@ export default function PressProfilePage({ darkMode }) {
     });
 
     return { labels, datasets };
-  }, [rawData, visible]);
+  }, [rawData, visible, timeCutoff]);
 
   const chartOptions = useMemo(function() {
     return {
@@ -206,8 +208,10 @@ export default function PressProfilePage({ darkMode }) {
         yRight: {
           position:'right',
           title: { display:true, text:'Pressure (kgf/cm²) / Vacuum (mbar)', color:tickColor, font:{size:10} },
-          ticks: { font:{size:9}, color:tickColor },
-          grid:  { display:false }
+          ticks: { font:{size:9}, color:tickColor, callback:function(v){return v.toFixed(0);} },
+          grid:  { display:false },
+          min: 0,
+          max: 60,
         }
       }
     };
@@ -234,13 +238,18 @@ export default function PressProfilePage({ darkMode }) {
       {key:'p11', name:'Platen 11',    color:PLATEN_COLORS[10]},
     ];
     return sensors.map(function(s) {
-      var count = rawData.filter(function(r){ return r[s.key] > t; }).length;
-      var secs  = count;
-      var mins  = Math.floor(secs/60);
-      var remSecs = secs % 60;
       var firstIdx = rawData.findIndex(function(r){ return r[s.key] > t; });
-      var firstMin = firstIdx >= 0 ? (firstIdx/60).toFixed(1) : '—';
-      return { name:s.name, color:s.color, secs:secs, mins:mins, remSecs:remSecs, firstMin:firstMin, hasData: count > 0 };
+      if (firstIdx < 0) return { name:s.name, color:s.color, secs:0, mins:0, remSecs:0, firstMin:'—', lastMin:'—', hasData:false };
+      var lastIdx = firstIdx;
+      for (var i = rawData.length-1; i >= firstIdx; i--) {
+        if (rawData[i][s.key] > t) { lastIdx = i; break; }
+      }
+      var secs    = lastIdx - firstIdx;
+      var mins    = Math.floor(secs/60);
+      var remSecs = secs % 60;
+      var firstMin = (firstIdx/60).toFixed(1);
+      var lastMin  = (lastIdx/60).toFixed(1);
+      return { name:s.name, color:s.color, secs:secs, mins:mins, remSecs:remSecs, firstMin:firstMin, lastMin:lastMin, hasData: secs > 0 };
     });
   }, [rawData, durationTemp]);
 
@@ -383,7 +392,15 @@ export default function PressProfilePage({ darkMode }) {
             <div className="card-title">{pressName} — Temperature, Pressure & Vacuum Profile</div>
             <div className="card-sub">Hover over chart to see all sensor values · Left Y = Temperature (°C) · Right Y = Pressure / Vacuum</div>
           </div>
-          <div style={{display:'flex',gap:6}}>
+          <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <label style={{fontSize:10,color:'var(--text2)',whiteSpace:'nowrap'}}>Show until (min):</label>
+              <input type="number" step="1" value={timeCutoff}
+                placeholder={'Max '+Math.ceil(rawData?rawData[rawData.length-1].sec/60:0)}
+                onChange={function(e){setTimeCutoff(e.target.value);}}
+                style={{width:80,fontSize:11,padding:'3px 7px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+              {timeCutoff && <button className="btn-ghost" onClick={function(){setTimeCutoff('');}} style={{fontSize:10,padding:'3px 7px'}}>Reset</button>}
+            </div>
             <button className="btn-ghost" onClick={function(){toggleAll(true);}} style={{fontSize:10,padding:'3px 8px'}}>Show all</button>
             <button className="btn-ghost" onClick={function(){toggleAll(false);}} style={{fontSize:10,padding:'3px 8px'}}>Hide all</button>
           </div>
@@ -441,7 +458,7 @@ export default function PressProfilePage({ darkMode }) {
                     <span style={{flex:1,fontSize:12,fontWeight:500,color:'var(--text)'}}>{r.name}</span>
                     <div style={{textAlign:'right'}}>
                       <div style={{fontSize:13,fontWeight:600,color:r.color}}>{r.mins}m {r.remSecs}s</div>
-                      <div style={{fontSize:10,color:'var(--text2)'}}>First crossed at {r.firstMin} min · {r.secs}s total</div>
+                      <div style={{fontSize:10,color:'var(--text2)'}}>Start: {r.firstMin} min → End: {r.lastMin} min · {r.secs}s total</div>
                     </div>
                   </div>
                 );
