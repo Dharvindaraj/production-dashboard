@@ -60,18 +60,26 @@ export default function MaterialTrackerPage({ darkMode, toast, allDays }) {
       });
 
       var headerRow = allRows.findIndex(function(r){
-        return r.some(function(c){return String(c).includes('Date');});
+        return r.some(function(c){return String(c).trim() === 'Date';});
       });
-      if (headerRow < 0) { toast('Cannot find header row'); return; }
+      if (headerRow < 0) {
+        headerRow = allRows.findIndex(function(r){
+          return r.some(function(c){return String(c).includes('OddNumber') || String(c).includes('ProductNumber');});
+        });
+      }
+      if (headerRow < 0) { toast('Cannot find header row — check file format'); return; }
+      console.log('Header row found at:', headerRow, 'content:', allRows[headerRow].slice(0,5));
 
       var dataRows = allRows.slice(headerRow+1);
+      console.log('Total data rows:', dataRows.length);
+      console.log('First data row:', dataRows[0]);
       var parsed = dataRows.map(function(r){
         return {
           date:        String(r[0]||'').trim(),
           productName: String(r[2]||'').trim(),
           qty:         parseFloat(r[6])||0,
           amountRM:    parseFloat(r[10])||0,
-          accountName: String(r[28]||'').trim(),
+          accountName: String(r[29]||'').trim(),
         };
       }).filter(function(r){ return r.date && r.date !== 'Date' && r.amountRM > 0; });
 
