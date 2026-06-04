@@ -21,6 +21,8 @@ export default function Sidebar({ page, setPage, darkMode, setDarkMode }) {
     { key: 'mathist',    icon: 'ti-chart-bar',            label: 'Material history' },
     { section: 'Personal' },
     { key: 'personalot', icon: 'ti-user-clock',       label: 'My OT' },
+    { section: 'Equipment' },
+    { key: 'pressprofile', icon: 'ti-activity',   label: 'Press profile' },
     { section: 'Admin' },
     { key: 'settings',   icon: 'ti-adjustments',      label: 'Settings' },
   ];
