@@ -42,6 +42,8 @@ export default function ScrapPage({ darkMode, toast }) {
   const [outputM2, setOutputM2] = useState('');
   const [pushing, setPushing]         = useState(false);
   const [pushed, setPushed]           = useState(false);
+  const [customPushDate, setCustomPushDate] = useState(false);
+  const [pushDate, setPushDate]       = useState('');
   const [pushingMain, setPushingMain] = useState(false);
   const [pushedMain, setPushedMain]   = useState(false);
   const [fileDate, setFileDate]   = useState('');
@@ -471,7 +473,7 @@ export default function ScrapPage({ darkMode, toast }) {
 
     var ok = await storageSet('day:' + yesterday, updated);
     setPushing(false);
-    if (ok) { setPushed(true); toast('Pushed to ' + yesterday + ' daily entry!'); }
+    if (ok) { setPushed(true); toast('Pushed to ' + yesterday + ' daily entry!'); setCustomPushDate(false); setPushDate(''); }
     else toast('Error pushing data');
   }
 
@@ -538,7 +540,24 @@ export default function ScrapPage({ darkMode, toast }) {
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
               <div>
                 <div style={{fontSize:13,fontWeight:500,color:'var(--text)',marginBottom:4}}>Push scrap data to daily entry</div>
-                <div style={{fontSize:11,color:'var(--text2)'}}>Pushes scrap % and defects to <strong>yesterday ({daysAgo(1)})</strong> daily entry</div>
+                <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                <div style={{fontSize:11,color:'var(--text2)'}}>
+                  Push to: <strong>{customPushDate ? (pushDate||'select date') : 'yesterday ('+daysAgo(1)+')'}</strong>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}
+                  onClick={function(){setCustomPushDate(function(v){return !v;});setPushed(false);}}>
+                  <div style={{width:16,height:16,borderRadius:3,border:'1.5px solid '+(customPushDate?'#378ADD':'var(--border2)'),
+                    background:customPushDate?'#378ADD':'transparent',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {customPushDate && <span style={{color:'#fff',fontSize:11,fontWeight:700}}>✓</span>}
+                  </div>
+                  <span style={{fontSize:11,color:customPushDate?'#378ADD':'var(--text2)'}}>Custom date</span>
+                </div>
+                {customPushDate && (
+                  <input type="date" value={pushDate}
+                    onChange={function(e){setPushDate(e.target.value);setPushed(false);}}
+                    style={{fontSize:11,padding:'4px 8px',border:'1px solid #378ADD',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                )}
+              </div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
                 <div className="fg" style={{margin:0}}>
@@ -557,7 +576,7 @@ export default function ScrapPage({ darkMode, toast }) {
                 <button className="btn-primary" onClick={pushToYesterday}
                   disabled={pushing||pushed||!outputM2}
                   style={{background:pushed?'#1D9E75':pushing?'#888':'#185FA5',minWidth:160}}>
-                  {pushed?'✓ Pushed!':pushing?'Pushing...':'→ Push to daily entry'}
+                  {pushed?'✓ Pushed!':pushing?'Pushing...':'→ Push to '+(customPushDate&&pushDate?pushDate:daysAgo(1))}
                 </button>
                 <button className="btn-primary" onClick={pushToMain}
                   disabled={pushingMain||pushedMain||!outputM2}

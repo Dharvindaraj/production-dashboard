@@ -372,22 +372,58 @@ export default function ScrapHistoryPage({ darkMode }) {
               </div>
               <div style={{marginTop:12}}>
                 {rankedPns.map(function(item,i){
-                  var topDef=Object.entries(item.defects).sort(function(a,b){return b[1]-a[1];})[0];
+                  var topDef = Object.entries(item.defects).sort(function(a,b){return b[1]-a[1];})[0];
+                  var isExp  = expandedPN === 'ranked-'+item.pn;
                   return (
-                    <div key={item.pn} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
-                      <div style={{width:24,height:24,borderRadius:'50%',background:i===0?'#FCEBEB':i===1?'#FAEEDA':'#F1EFE8',color:i===0?'#791F1F':i===1?'#633806':'#444',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,flexShrink:0}}>{i+1}</div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,fontWeight:500,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.pn}</div>
-                        <div style={{fontSize:10,color:'var(--text2)'}}>Top defect: <span style={{color:DEFECT_COLORS[topDef?topDef[0]:'Others'],fontWeight:500}}>{topDef?topDef[0]:'—'}</span> · {Object.keys(item.defects).length} types</div>
-                      </div>
-                      <div style={{textAlign:'right',flexShrink:0}}>
-                        <div style={{fontSize:13,fontWeight:500,color:'#E24B4A'}}>{item.totalArea.toFixed(4)} m²</div>
-                      </div>
-                      <div style={{width:80,flexShrink:0}}>
-                        <div style={{height:6,background:'var(--bg3)',borderRadius:3}}>
-                          <div style={{height:'100%',width:(item.totalArea/rankedPns[0].totalArea*100).toFixed(1)+'%',background:'#E24B4A',borderRadius:3}}></div>
+                    <div key={item.pn} style={{borderBottom:'1px solid var(--border)'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0'}}>
+                        <div style={{width:24,height:24,borderRadius:'50%',background:i===0?'#FCEBEB':i===1?'#FAEEDA':'#F1EFE8',color:i===0?'#791F1F':i===1?'#633806':'#444',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,flexShrink:0}}>{i+1}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:500,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.pn}</div>
+                          <div style={{fontSize:10,color:'var(--text2)'}}>Top defect: <span style={{color:DEFECT_COLORS[topDef?topDef[0]:'Others'],fontWeight:500}}>{topDef?topDef[0]:'—'}</span> · {Object.keys(item.defects).length} types</div>
                         </div>
+                        <div style={{textAlign:'right',flexShrink:0}}>
+                          <div style={{fontSize:13,fontWeight:500,color:'#E24B4A'}}>{item.totalArea.toFixed(4)} m²</div>
+                        </div>
+                        <div style={{width:70,flexShrink:0}}>
+                          <div style={{height:6,background:'var(--bg3)',borderRadius:3}}>
+                            <div style={{height:'100%',width:(item.totalArea/rankedPns[0].totalArea*100).toFixed(1)+'%',background:'#E24B4A',borderRadius:3}}></div>
+                          </div>
+                        </div>
+                        <button onClick={function(){setExpandedPN(isExp?null:'ranked-'+item.pn);}}
+                          style={{width:28,height:28,borderRadius:6,border:'1px solid var(--border2)',background:isExp?'#378ADD':'var(--bg3)',color:isExp?'#fff':'var(--text2)',cursor:'pointer',fontSize:12,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          {isExp?'▲':'▼'}
+                        </button>
                       </div>
+                      {isExp && (
+                        <div style={{padding:'10px 14px 14px 38px',background:'var(--bg3)',borderRadius:8,marginBottom:6}}>
+                          <div style={{fontSize:11,fontWeight:600,color:'var(--text)',marginBottom:8}}>Defect breakdown — {item.pn}</div>
+                          {Object.entries(item.defects).sort(function(a,b){return b[1]-a[1];}).map(function(de){
+                            var maxDef = Math.max.apply(null, Object.values(item.defects));
+                            return (
+                              <div key={de[0]} style={{marginBottom:7}}>
+                                <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
+                                  <span style={{display:'flex',alignItems:'center',gap:6}}>
+                                    <span style={{width:10,height:10,borderRadius:2,background:DEFECT_COLORS[de[0]]||'#888',flexShrink:0,display:'inline-block'}}></span>
+                                    <strong>{de[0]}</strong>
+                                  </span>
+                                  <span style={{fontWeight:600,color:DEFECT_COLORS[de[0]]||'#888'}}>
+                                    {de[1].toFixed(4)} m² &nbsp;
+                                    <span style={{fontWeight:400,color:'var(--text2)'}}>({(de[1]/item.totalArea*100).toFixed(1)}%)</span>
+                                  </span>
+                                </div>
+                                <div style={{height:7,background:'var(--bg2)',borderRadius:4}}>
+                                  <div style={{height:'100%',width:(de[1]/maxDef*100).toFixed(1)+'%',background:DEFECT_COLORS[de[0]]||'#888',borderRadius:4,transition:'width .3s'}}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--border)',display:'flex',justifyContent:'space-between',fontSize:11}}>
+                            <span style={{color:'var(--text2)'}}>Total scrap area</span>
+                            <strong style={{color:'#E24B4A'}}>{item.totalArea.toFixed(4)} m²</strong>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -417,7 +453,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                   {[...history].reverse().map(function(d) {
                     var pct = parseFloat(d.masslam_scrap_pct)||0;
                     var isExpanded = expandedRow === d.report_date;
-                    var pnData = d.pn_breakdown ? Object.values(d.pn_breakdown).sort(function(a,b){return b.totalArea-a.totalArea;}).slice(0,5) : [];
+                    var pnData = d.pn_breakdown ? Object.values(d.pn_breakdown).sort(function(a,b){return b.totalArea-a.totalArea;}).slice(0,10) : [];
                     return [
                       <tr key={d.report_date} style={{cursor:'pointer',background:isExpanded?'rgba(55,138,221,0.05)':''}}
                         onClick={function(){setExpandedRow(isExpanded?null:d.report_date);}}>
@@ -436,7 +472,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                         <tr key={d.report_date+'-exp'}>
                           <td colSpan={10} style={{background:'var(--bg3)',padding:'10px 16px'}}>
                             <div style={{fontSize:11,fontWeight:500,color:'var(--text)',marginBottom:8}}>Top part numbers — {d.report_date}</div>
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8}}>
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
                               {pnData.map(function(pn){
                                 var topDef=pn.defects?Object.entries(pn.defects).sort(function(a,b){return b[1]-a[1];})[0]:null;
                                 return (
@@ -444,6 +480,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                                     style={{background:'var(--bg2)',borderRadius:7,padding:'8px 10px',border:'1px solid '+(expandedPN===d.report_date+pn.pn?'#378ADD':'var(--border)'),cursor:'pointer'}}
                                     onClick={function(){setExpandedPN(expandedPN===d.report_date+pn.pn?null:d.report_date+pn.pn);}}>
                                     <div style={{fontSize:11,fontWeight:500,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pn.pn}</div>
+                                    <div style={{fontSize:9,color:'var(--text3)',marginTop:2}}>{expandedPN===d.report_date+pn.pn?'▲ hide':'▼ click for details'}</div>
                                     <div style={{fontSize:10,color:'#E24B4A',fontWeight:500}}>{pn.totalArea.toFixed(4)} m²</div>
                                     {topDef&&<div style={{fontSize:10,color:DEFECT_COLORS[topDef[0]]||'#888'}}>{topDef[0]}</div>}
                                     {expandedPN===d.report_date+pn.pn && pn.defects && (
