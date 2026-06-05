@@ -23,7 +23,8 @@ export default function ScrapHistoryPage({ darkMode }) {
   const [from, setFrom]               = useState(daysAgo(30));
   const [to, setTo]                   = useState(tod());
   const [loading, setLoading]         = useState(false);
-  const [expandedRow, setExpandedRow] = useState(null);
+  const [expandedRow, setExpandedRow]   = useState(null);
+  const [expandedPN, setExpandedPN]     = useState(null);
   const [showScrap, setShowScrap]     = useState(true);
   const [showAvg, setShowAvg]         = useState(true);
   const [showTarget, setShowTarget]   = useState(true);
@@ -439,10 +440,30 @@ export default function ScrapHistoryPage({ darkMode }) {
                               {pnData.map(function(pn){
                                 var topDef=pn.defects?Object.entries(pn.defects).sort(function(a,b){return b[1]-a[1];})[0]:null;
                                 return (
-                                  <div key={pn.pn} style={{background:'var(--bg2)',borderRadius:7,padding:'8px 10px',border:'1px solid var(--border)'}}>
+                                  <div key={pn.pn}
+                                    style={{background:'var(--bg2)',borderRadius:7,padding:'8px 10px',border:'1px solid '+(expandedPN===d.report_date+pn.pn?'#378ADD':'var(--border)'),cursor:'pointer'}}
+                                    onClick={function(){setExpandedPN(expandedPN===d.report_date+pn.pn?null:d.report_date+pn.pn);}}>
                                     <div style={{fontSize:11,fontWeight:500,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pn.pn}</div>
                                     <div style={{fontSize:10,color:'#E24B4A',fontWeight:500}}>{pn.totalArea.toFixed(4)} m²</div>
                                     {topDef&&<div style={{fontSize:10,color:DEFECT_COLORS[topDef[0]]||'#888'}}>{topDef[0]}</div>}
+                                    {expandedPN===d.report_date+pn.pn && pn.defects && (
+                                      <div style={{marginTop:6,borderTop:'1px solid var(--border)',paddingTop:6}}>
+                                        {Object.entries(pn.defects).sort(function(a,b){return b[1]-a[1];}).map(function(de){
+                                          var maxDef = Math.max.apply(null,Object.values(pn.defects));
+                                          return (
+                                            <div key={de[0]} style={{marginBottom:4}}>
+                                              <div style={{display:'flex',justifyContent:'space-between',fontSize:9,marginBottom:1}}>
+                                                <span style={{color:DEFECT_COLORS[de[0]]||'#888'}}>{de[0]}</span>
+                                                <span style={{fontWeight:500,color:DEFECT_COLORS[de[0]]||'#888'}}>{de[1].toFixed(4)} m²</span>
+                                              </div>
+                                              <div style={{height:3,background:'var(--bg3)',borderRadius:2}}>
+                                                <div style={{height:'100%',width:(de[1]/maxDef*100).toFixed(1)+'%',background:DEFECT_COLORS[de[0]]||'#888',borderRadius:2}}></div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}

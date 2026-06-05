@@ -434,6 +434,7 @@ export default function ScrapPage({ darkMode, toast }) {
       defectOthers:      calcPct(data.myDefects['Others']||0),
       sectionTotals:     data.sectionTotals,
       pnBreakdown:       pnMap,
+      othersBreakdown:   data.othersBreakdown || {},
     });
 
     setPushingMain(false);
