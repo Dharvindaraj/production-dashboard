@@ -61,7 +61,7 @@ export default function OverviewPage({ allDays, darkMode }) {
 
   const avgDefs = {};
   DEFECTS.forEach(function(n) {
-    const vs = filtered.map(function(x){return (x.data.defects&&x.data.defects[n])||0;});
+    const vs = filtered.map(function(x){return parseFloat((x.data.defects&&x.data.defects[n])||0)||0;});
     avgDefs[n] = vs.length ? vs.reduce(function(a,b){return a+b;},0)/vs.length : 0;
   });
 
@@ -416,7 +416,7 @@ export default function OverviewPage({ allDays, darkMode }) {
             {DEFECTS.map(function(n,i){return <span key={n} className="leg"><span className="leg-dot" style={{background:DEF_COLORS[i]}}></span>{n}</span>;})}
           </div>
           <div style={{height:150}}>
-            <Bar data={{labels,datasets:DEFECTS.map(function(n,i){return{label:n,data:filtered.map(function(x){return(x.data.defects&&x.data.defects[n])||0;}),backgroundColor:DEF_COLORS[i],stack:'s',borderRadius:2};})}}
+            <Bar data={{labels,datasets:DEFECTS.map(function(n,i){return{label:n,data:filtered.map(function(x){return parseFloat((x.data.defects&&x.data.defects[n])||0)||0;}),backgroundColor:DEF_COLORS[i],stack:'s',borderRadius:2};})}}
               options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
                 x:{stacked:true,ticks:{font:{size:9},autoSkip:true,maxRotation:0,color:tickColor},grid:{display:false}},
                 y:{stacked:true,ticks:{font:{size:9},callback:function(v){return v+'%';},color:tickColor},grid:{color:gridColor}}
