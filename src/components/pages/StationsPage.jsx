@@ -11,17 +11,32 @@ export default function StationsPage({ allDays, globalDate, darkMode }) {
   const recent7 = allDays.filter(function(x) { return x.date <= globalDate; }).slice(-7);
   const today   = allDays.find(function(x) { return x.date === globalDate; });
 
+  function getStnVal(stationData, name, idx) {
+    if (!stationData) return 0;
+    if (stationData[name] !== undefined) return parseFloat(stationData[name]) || 0;
+    if (stationData[String(idx)] !== undefined) return parseFloat(stationData[String(idx)]) || 0;
+    if (stationData[idx] !== undefined) return parseFloat(stationData[idx]) || 0;
+    return 0;
+  }
+
+  function getAllStnVal(dayData, name, idx) {
+    var v = getStnVal(dayData.stations_morning, name, idx)
+          + getStnVal(dayData.stations_night, name, idx);
+    if (v > 0) return v;
+    return getStnVal(dayData.stations, name, idx);
+  }
+
   const avgs = {};
   STATION_NAMES.forEach(function(name, i) {
     const idx = i + 1;
     const vs = recent7
-      .filter(function(x) { return x.data.stations && x.data.stations[idx] > 0; })
-      .map(function(x) { return x.data.stations[idx]; });
+      .filter(function(x) { return getAllStnVal(x.data, name, idx) > 0; })
+      .map(function(x) { return getAllStnVal(x.data, name, idx); });
     avgs[name] = vs.length ? vs.reduce(function(a, b) { return a + b; }, 0) / vs.length : 0;
   });
 
   const cur = STATION_NAMES.map(function(name, i) {
-    return today && today.data.stations ? today.data.stations[i + 1] || 0 : 0;
+    return today ? getAllStnVal(today.data, name, i+1) : 0;
   });
   const avg = STATION_NAMES.map(function(name) {
     return parseFloat(avgs[name].toFixed(2));

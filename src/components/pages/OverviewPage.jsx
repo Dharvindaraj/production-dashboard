@@ -21,6 +21,9 @@ export default function OverviewPage({ allDays, darkMode }) {
   const [to, setTo]     = useState(tod());
   const [filtered, setFiltered] = useState([]);
 
+  const [outputView, setOutputView] = useState('lcm');
+  const [stationView, setStationView] = useState('lcm');
+
   function update() { setFiltered(filterDays(allDays, from, to)); }
   useEffect(function() { update(); }, [allDays, from, to]);
 
@@ -40,24 +43,53 @@ export default function OverviewPage({ allDays, darkMode }) {
   }
 
   const labels  = filtered.map(function(x) { return x.date.slice(5); });
-  const outs    = filtered.map(function(x) { return x.data.output || 0; });
-  const tgts    = filtered.map(function(x) { return x.data.target || 0; });
-  const scraps  = filtered.map(function(x) { return x.data.scrap || 0; });
-  const m2hrs   = filtered.map(function(x) { return parseFloat(x.data.m2hr) || 0; });
-
   const noProductionDays = filtered.map(function(x) { return x.data.noProduction || false; });
+  const outs    = filtered.map(function(x,i) { if(noProductionDays[i]) return null; return x.data.output||null; });
+  const tgts    = filtered.map(function(x) { return x.data.target || 0; });
+  const scraps  = filtered.map(function(x,i) { if(noProductionDays[i]) return null; var v=parseFloat(x.data.scrap); return (v&&v>0)?v:null; });
+  const m2hrs   = filtered.map(function(x,i) { if(noProductionDays[i]) return null; var v=parseFloat(parseFloat(x.data.m2hr||0).toFixed(2)); return v>0?v:null; });
 
-  const totalOut = outs.reduce(function(a,b){return a+b;},0);
+  const lcsOutputArr = filtered.map(function(x,i) {
+    if(noProductionDays[i]) return null;
+    var v = parseFloat(x.data.lcsOutput)||0;
+    return v > 0 ? v : null;
+  });
+  const lcsTargetArr = filtered.map(function(x,i) {
+    return parseFloat(x.data.lcsTarget)||0;
+  });
+
+  const lcmM2 = filtered.map(function(x,i) {
+    if(noProductionDays[i]) return null;
+    var v = (parseFloat(x.data.lcmMorningM2)||0)+(parseFloat(x.data.lcmNightM2)||0);
+    return v > 0 ? v : null;
+  });
+  const lcsM2 = filtered.map(function(x,i) {
+    if(noProductionDays[i]) return null;
+    var v = (parseFloat(x.data.lcsMorningM2)||0)+(parseFloat(x.data.lcsNightM2)||0);
+    return v > 0 ? v : null;
+  });
+  const lcmBoards = filtered.map(function(x,i) {
+    if(noProductionDays[i]) return null;
+    var v = (parseFloat(x.data.lcmMorningBoards)||0)+(parseFloat(x.data.lcmNightBoards)||0);
+    return v > 0 ? v : null;
+  });
+  const lcsBoards = filtered.map(function(x,i) {
+    if(noProductionDays[i]) return null;
+    var v = (parseFloat(x.data.lcsMorningBoards)||0)+(parseFloat(x.data.lcsNightBoards)||0);
+    return v > 0 ? v : null;
+  });
+  const hasProductType = lcmM2.some(function(v){return v!==null&&v>0;}) || lcsM2.some(function(v){return v!==null&&v>0;});
+
+  const totalOut = outs.reduce(function(a,b){return a+(b||0);},0);
   const totalTgt = tgts.reduce(function(a,b){return a+b;},0);
   const diff     = totalOut - totalTgt;
-  const scrapVals = scraps.filter(function(v,i){return v>0&&!noProductionDays[i];});
+  const scrapVals = scraps.filter(function(v){return v!==null&&v>0;});
   const avgScrap = scrapVals.length ? scrapVals.reduce(function(a,b){return a+b;},0)/scrapVals.length : 0;
-  const m2hrVals = m2hrs.filter(function(v){return v>0;});
-  const avgM2hr  = m2hrVals.length ? m2hrVals.reduce(function(a,b){return a+b;},0)/m2hrVals.length : 0;
+  const m2hrVals = m2hrs.filter(Boolean);
+  const avgM2hr  = m2hrVals.length ? parseFloat((m2hrVals.reduce(function(a,b){return a+b;},0)/m2hrVals.length).toFixed(2)) : 0;
   const lastD    = filtered.length ? filtered[filtered.length-1].data : null;
-  const lastAoi  = lastD ? lastD.aoi||0 : 0;
   const firstPassRate = 100 - avgScrap;
-  const scrapAbove    = scraps.filter(function(v,i){return v>SCRAP_TARGET&&!noProductionDays[i];}).length;
+  const scrapAbove    = scraps.filter(function(v){return v!==null&&v>SCRAP_TARGET;}).length;
 
   const avgDefs = {};
   DEFECTS.forEach(function(n) {
@@ -72,13 +104,6 @@ export default function OverviewPage({ allDays, darkMode }) {
 
   var STN_NAMES_ORD = ['Oxide','Glicap','Baking','Rivet','Setup','Preparation','Pulse bonding','CCD Welding','Layup 1','Layup 2','Vigor press','Buckle press','Routing 1','Routing 2','Xray 1','Xray 2','TTST'];
 
-  function getStnVal(stationData, nameOrIdx) {
-    if (!stationData) return 0;
-    var byName = stationData[nameOrIdx];
-    if (byName !== undefined) return parseFloat(byName) || 0;
-    return 0;
-  }
-
   function getStnTotal(stationData, idx) {
     if (!stationData) return 0;
     var name = STN_NAMES_ORD[idx-1];
@@ -88,9 +113,23 @@ export default function OverviewPage({ allDays, darkMode }) {
     return parseFloat(byIdx) || 0;
   }
 
+  const lcmMornTotals = {};
+  const lcmNightTotals = {};
+  const lcsMornTotals  = {};
+  const lcsNightTotals = {};
+  for (var li = 1; li <= N_STN; li++) {
+    var sname = STN_NAMES_ORD[li-1];
+    lcmMornTotals[li]  = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmMorning||{})[sname])||0);},0);
+    lcmNightTotals[li] = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmNight||{})[sname])||0);},0);
+    lcsMornTotals[li]  = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsMorningBoards||{})[sname])||0);},0);
+    lcsNightTotals[li] = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsNightBoards||{})[sname])||0);},0);
+  }
+
   const stnTotals = {};
   for (var si = 1; si <= N_STN; si++) {
-    stnTotals[si] = filtered.reduce(function(s,x){return s+getStnTotal(x.data.stations,si)+getStnTotal(x.data.stations_morning,si)+getStnTotal(x.data.stations_night,si);},0);
+    stnTotals[si] = filtered.reduce(function(s,x){
+      return s + getStnTotal(x.data.stations,si) + getStnTotal(x.data.stations_morning,si) + getStnTotal(x.data.stations_night,si);
+    },0);
   }
 
   const morningTotals = {};
@@ -113,14 +152,14 @@ export default function OverviewPage({ allDays, darkMode }) {
   const utilizationRate = totalPossibleMh>0?(totalActualMh/totalPossibleMh*100).toFixed(1):0;
 
   const movingAvg = scraps.map(function(_,i){
-    if (noProductionDays[i]) return null;
+    if (scraps[i]===null) return null;
     const start=Math.max(0,i-6);
-    const sl=scraps.slice(start,i+1).filter(function(v,j){return v>0&&!noProductionDays[start+j];});
+    const sl=scraps.slice(start,i+1).filter(function(v){return v!==null&&v>0;});
     if (!sl.length) return null;
     return parseFloat((sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(3));
   });
 
-  const cumOut = outs.map(function(_,i){return outs.slice(0,i+1).reduce(function(a,b){return a+b;},0);});
+  const cumOut = outs.map(function(_,i){return outs.slice(0,i+1).reduce(function(a,b){return a+(b||0);},0);});
   const cumTgt = tgts.map(function(_,i){return tgts.slice(0,i+1).reduce(function(a,b){return a+b;},0);});
 
   const dowByDay = {};
@@ -250,16 +289,40 @@ export default function OverviewPage({ allDays, darkMode }) {
 
       <div className="chart-row-2" style={{marginBottom:12}}>
         <div className="card">
-          <div className="card-head"><div><div className="card-title">Output vs target</div><div className="card-sub">{totalOut.toLocaleString()} m² · {diff>=0?'+':''}{diff.toLocaleString()} diff</div></div></div>
-          <div className="legend-row">
-            <span className="leg"><span className="leg-dot" style={{background:'#378ADD'}}></span>Actual</span>
-            <span className="leg"><span className="leg-dot" style={{background:'#E24B4A',opacity:.6}}></span>Target</span>
+          <div className="card-head">
+            <div>
+              <div className="card-title">Output vs target</div>
+              <div className="card-sub">
+                {outputView==='lcm'
+                  ? totalOut.toLocaleString()+' m² · '+(diff>=0?'+':'')+diff.toLocaleString()+' diff'
+                  : (lcsOutputArr.reduce(function(s,v){return s+(v||0);},0)).toLocaleString()+' boards'}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              <button onClick={function(){setOutputView('lcm');}}
+                style={{padding:'3px 10px',borderRadius:14,border:'1.5px solid #378ADD',fontSize:11,cursor:'pointer',
+                  background:outputView==='lcm'?'#378ADD':'transparent',color:outputView==='lcm'?'#fff':'#378ADD',fontWeight:500}}>
+                🔵 LCM
+              </button>
+              <button onClick={function(){setOutputView('lcs');}}
+                style={{padding:'3px 10px',borderRadius:14,border:'1.5px solid #E24B4A',fontSize:11,cursor:'pointer',
+                  background:outputView==='lcs'?'#E24B4A':'transparent',color:outputView==='lcs'?'#fff':'#E24B4A',fontWeight:500}}>
+                🔴 LCS
+              </button>
+            </div>
           </div>
-          <GradientLine id="ov-output" height={180} data={{labels,datasets:[
-            {label:'Output',data:outsForChart,borderColor:'#378ADD',fill:true,tension:.35,pointRadius:3,spanGaps:true,
+          <div className="legend-row">
+            <span className="leg"><span className="leg-dot" style={{background:outputView==='lcm'?'#378ADD':'#E24B4A'}}></span>{outputView==='lcm'?'LCM output (m²)':'LCS output (boards)'}</span>
+            <span className="leg"><span className="leg-dot" style={{background:'rgba(226,75,74,0.5)'}}></span>Target</span>
+          </div>
+          <GradientLine id="ov-output" height={180} data={{labels,datasets:outputView==='lcm'?[
+            {label:'LCM Output',data:outsForChart,borderColor:'#378ADD',fill:true,tension:.35,pointRadius:3,spanGaps:true,
               pointStyle:outsForChart.map(function(v,i){return noProductionDays[i]?'rectRot':'circle';}),
               pointBackgroundColor:outsForChart.map(function(v,i){return noProductionDays[i]?'#888780':'#378ADD';})},
             {label:'Target',data:tgts,borderColor:'#E24B4A',borderDash:[5,4],tension:.35,fill:false,pointRadius:0,borderWidth:1.5}
+          ]:[
+            {label:'LCS Output',data:lcsOutputArr,borderColor:'#E24B4A',fill:true,tension:.35,pointRadius:3,spanGaps:true},
+            {label:'LCS Target',data:lcsTargetArr,borderColor:'#EF9F27',borderDash:[5,4],tension:.35,fill:false,pointRadius:0,borderWidth:1.5}
           ]}} options={lineOpts()} />
         </div>
         <div className="card">
@@ -279,6 +342,43 @@ export default function OverviewPage({ allDays, darkMode }) {
           ]}} options={lineOpts('%')} />
         </div>
       </div>
+
+      {hasProductType && (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+          <div className="card">
+            <div className="card-head"><div><div className="card-title">LCM vs LCS — output m²</div><div className="card-sub">Stacked daily output by product type</div></div></div>
+            <div className="legend-row">
+              <span className="leg"><span className="leg-dot" style={{background:'#378ADD'}}></span>LCM</span>
+              <span className="leg"><span className="leg-dot" style={{background:'#E24B4A'}}></span>LCS</span>
+            </div>
+            <div style={{height:180}}>
+              <Bar data={{labels,datasets:[
+                {label:'LCM',data:lcmM2, backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
+                {label:'LCS',data:lcsM2, backgroundColor:'#E24B4A',borderRadius:3,stack:'s'},
+              ]}} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+                x:{stacked:true,ticks:{font:{size:9},autoSkip:true,maxRotation:0,color:tickColor},grid:{display:false}},
+                y:{stacked:true,ticks:{font:{size:9},color:tickColor},grid:{color:gridColor}}
+              }}} />
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head"><div><div className="card-title">LCM vs LCS — boards</div><div className="card-sub">Grouped daily boards by product type</div></div></div>
+            <div className="legend-row">
+              <span className="leg"><span className="leg-dot" style={{background:'#378ADD'}}></span>LCM</span>
+              <span className="leg"><span className="leg-dot" style={{background:'#E24B4A'}}></span>LCS</span>
+            </div>
+            <div style={{height:180}}>
+              <Bar data={{labels,datasets:[
+                {label:'LCM boards',data:lcmBoards,backgroundColor:'#378ADD',borderRadius:3},
+                {label:'LCS boards',data:lcsBoards,backgroundColor:'#E24B4A',borderRadius:3},
+              ]}} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+                x:{ticks:{font:{size:9},autoSkip:true,maxRotation:0,color:tickColor},grid:{display:false}},
+                y:{ticks:{font:{size:9},color:tickColor},grid:{color:gridColor}}
+              }}} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="chart-row-2" style={{marginBottom:12}}>
         <div className="card">
@@ -308,7 +408,10 @@ export default function OverviewPage({ allDays, darkMode }) {
           <div className="card-head"><div><div className="card-title">m²/hr efficiency</div><div className="card-sub">Avg: {avgM2hr.toFixed(2)}</div></div></div>
           <GradientLine id="ov-m2hr" height={130} data={{labels,datasets:[
             {label:'m²/hr',data:m2hrs,borderColor:'#EF9F27',fill:true,tension:.35,pointRadius:2}
-          ]}} options={lineOpts()} />
+          ]}} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+            x:{ticks:{font:{size:9},autoSkip:true,maxRotation:0,color:tickColor},grid:{display:false}},
+            y:{ticks:{font:{size:9},color:tickColor,callback:function(v){return parseFloat(v.toFixed(2));}},grid:{color:gridColor}}
+          }}} />
         </div>
         <div className="card">
           <div className="card-head"><div><div className="card-title">Scrap by day of week</div><div className="card-sub">Average % per weekday</div></div></div>
@@ -324,10 +427,10 @@ export default function OverviewPage({ allDays, darkMode }) {
           <div className="card-head"><div><div className="card-title">Morning vs night</div><div className="card-sub">Total output split</div></div></div>
           <div className="legend-row">
             <span className="leg"><span className="leg-dot" style={{background:'#378ADD'}}></span>Morning {totalMorning>0?(totalMorning/(totalMorning+totalNight)*100).toFixed(0):0}%</span>
-            <span className="leg"><span className="leg-dot" style={{background:'#7F77DD'}}></span>Night {totalNight>0?(totalNight/(totalMorning+totalNight)*100).toFixed(0):0}%</span>
+            <span className="leg"><span className="leg-dot" style={{background:'#EF9F27'}}></span>Night {totalNight>0?(totalNight/(totalMorning+totalNight)*100).toFixed(0):0}%</span>
           </div>
           <div style={{height:100}}>
-            <Doughnut data={{labels:['Morning','Night'],datasets:[{data:[totalMorning,totalNight],backgroundColor:['#378ADD','#7F77DD'],borderWidth:0,hoverOffset:4}]}}
+            <Doughnut data={{labels:['Morning','Night'],datasets:[{data:[totalMorning,totalNight],backgroundColor:['#378ADD','#EF9F27'],borderWidth:0,hoverOffset:4}]}}
               options={{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}} />
           </div>
         </div>
@@ -426,15 +529,32 @@ export default function OverviewPage({ allDays, darkMode }) {
       </div>
 
       <div className="card" style={{marginBottom:12}}>
-        <div className="card-head"><div><div className="card-title">Morning vs night shift per station</div><div className="card-sub">Total output comparison over period</div></div></div>
+        <div className="card-head">
+          <div><div className="card-title">Morning vs night shift per station</div><div className="card-sub">{stationView==='lcm'?'Total m² over period':'Total boards over period'}</div></div>
+          <div style={{display:'flex',gap:6}}>
+            <button onClick={function(){setStationView('lcm');}}
+              style={{padding:'3px 10px',borderRadius:14,border:'1.5px solid #378ADD',fontSize:11,cursor:'pointer',
+                background:stationView==='lcm'?'#378ADD':'transparent',color:stationView==='lcm'?'#fff':'#378ADD',fontWeight:500}}>
+              🔵 LCM
+            </button>
+            <button onClick={function(){setStationView('lcs');}}
+              style={{padding:'3px 10px',borderRadius:14,border:'1.5px solid #E24B4A',fontSize:11,cursor:'pointer',
+                background:stationView==='lcs'?'#E24B4A':'transparent',color:stationView==='lcs'?'#fff':'#E24B4A',fontWeight:500}}>
+              🔴 LCS
+            </button>
+          </div>
+        </div>
         <div className="legend-row">
           <span className="leg"><span className="leg-dot" style={{background:'#378ADD'}}></span>Morning</span>
-          <span className="leg"><span className="leg-dot" style={{background:'#7F77DD'}}></span>Night</span>
+          <span className="leg"><span className="leg-dot" style={{background:'#EF9F27'}}></span>Night</span>
         </div>
         <div style={{height:220}}>
-          <Bar data={{labels:stnNames,datasets:[
-            {label:'Morning',data:stnNames.map(function(_,i){return morningTotals[i+1]||0;}),backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
-            {label:'Night',  data:stnNames.map(function(_,i){return nightTotals[i+1]||0;}),  backgroundColor:'#7F77DD',borderRadius:3,stack:'s'}
+          <Bar data={{labels:stnNames,datasets:stationView==='lcm'?[
+            {label:'LCM Morning',data:stnNames.map(function(_,i){return lcmMornTotals[i+1]||morningTotals[i+1]||0;}),backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
+            {label:'LCM Night',  data:stnNames.map(function(_,i){return lcmNightTotals[i+1]||nightTotals[i+1]||0;}), backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
+          ]:[
+            {label:'LCS Morning',data:stnNames.map(function(_,i){return lcsMornTotals[i+1]||0;}), backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
+            {label:'LCS Night',  data:stnNames.map(function(_,i){return lcsNightTotals[i+1]||0;}),backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
           ]}} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
             x:{stacked:true,ticks:{font:{size:9},autoSkip:false,maxRotation:45,color:tickColor},grid:{display:false}},
             y:{stacked:true,ticks:{font:{size:9},color:tickColor},grid:{color:gridColor}}
@@ -528,44 +648,12 @@ export default function OverviewPage({ allDays, darkMode }) {
         <div className="card">
           <div className="card-head"><div><div className="card-title">AOI breakdown</div><div className="card-sub">Period average</div></div></div>
           <div style={{position:'relative',height:160,display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <Doughnut
-              key={'aoi-donut-'+filtered.length}
-              data={{
-                labels:['Dent','Scratches','Wrinkle'],
-                datasets:[{
-                  data:aoiVals,
-                  backgroundColor:['#378ADD','#EF9F27','#E24B4A'],
-                  borderWidth:3,
-                  borderColor: darkMode ? '#1a1a1a' : '#ffffff',
-                  hoverOffset:6,
-                }]
-              }}
-              options={{
-                responsive:true,
-                maintainAspectRatio:false,
-                cutout:'68%',
-                plugins:{
-                  legend:{display:false},
-                  tooltip:{
-                    callbacks:{
-                      label:function(ctx){
-                        return ' '+ctx.label+': '+ctx.parsed.toFixed(2)+'%';
-                      }
-                    }
-                  }
-                }
-              }}
+            <Doughnut key={'aoi-donut-'+filtered.length}
+              data={{labels:['Dent','Scratches','Wrinkle'],datasets:[{data:aoiVals,backgroundColor:['#378ADD','#EF9F27','#E24B4A'],borderWidth:3,borderColor:darkMode?'#1a1a1a':'#ffffff',hoverOffset:6}]}}
+              options={{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+ctx.parsed.toFixed(2)+'%';}}}}}}
             />
-            <div style={{
-              position:'absolute',
-              top:'50%',left:'50%',
-              transform:'translate(-50%,-50%)',
-              textAlign:'center',
-              pointerEvents:'none',
-            }}>
-              <div style={{fontSize:16,fontWeight:600,color:'var(--text)',lineHeight:1}}>
-                {(aoiDentAvg+aoiScratchAvg+aoiWrinkleAvg).toFixed(2)}%
-              </div>
+            <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center',pointerEvents:'none'}}>
+              <div style={{fontSize:16,fontWeight:600,color:'var(--text)',lineHeight:1}}>{(aoiDentAvg+aoiScratchAvg+aoiWrinkleAvg).toFixed(2)}%</div>
               <div style={{fontSize:9,color:'var(--text2)',marginTop:2}}>Total AOI</div>
             </div>
           </div>

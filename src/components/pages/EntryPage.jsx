@@ -7,8 +7,18 @@ const AVT_TC = ['#27500A','#0C447C','#633806','#791F1F','#3B3599','#0F6E56'];
 
 export default function EntryPage({ globalDate, toast, onSave }) {
   const [fields, setFields] = useState({
-    output:'', target:'', scrap:'', dent:'', scratch:'', wrinkle:'', notes:'', delayReason:'', noProduction:false
+    output:'', target:'', lcsOutput:'', lcsTarget:'',
+    scrap:'', dent:'', scratch:'', wrinkle:'', notes:'', delayReason:'', noProduction:false
   });
+  const [stLcmMorn, setStLcmMorn]   = useState({});
+  const [stLcmMornB, setStLcmMornB] = useState({});
+  const [stLcsMorn, setStLcsMorn]   = useState({});
+  const [stLcsMornB, setStLcsMornB] = useState({});
+  const [stLcmNight, setStLcmNight] = useState({});
+  const [stLcmNightB, setStLcmNightB] = useState({});
+  const [stLcsNight, setStLcsNight] = useState({});
+  const [stLcsNightB, setStLcsNightB] = useState({});
+  const [expandedStn, setExpandedStn] = useState(null);
   const [defVals, setDefVals]       = useState({});
   const [stnMorning, setStnMorning] = useState({});
   const [stnNight, setStnNight]     = useState({});
@@ -30,6 +40,8 @@ export default function EntryPage({ globalDate, toast, onSave }) {
         setFields({
           output:      d.output      || '',
           target:      d.target      || '',
+          lcsOutput:   d.lcsOutput   || '',
+          lcsTarget:   d.lcsTarget   || '',
           scrap:       d.scrap       || '',
           dent:        d.dent        || '',
           scratch:     d.scratch     || '',
@@ -53,11 +65,20 @@ export default function EntryPage({ globalDate, toast, onSave }) {
           });
           return result;
         }
-        setStnMorning(convertStationKeys(d.stations_morning, stnList2) || {});
-        setStnNight(convertStationKeys(d.stations_night, stnList2) || {});
+        var convMorn  = convertStationKeys(d.stations_morning, stnList2) || {};
+        var convNight = convertStationKeys(d.stations_night, stnList2) || {};
         if (!d.stations_morning || Object.keys(d.stations_morning).length === 0) {
-          setStnMorning(convertStationKeys(d.stations, stnList2) || {});
+          convMorn = convertStationKeys(d.stations, stnList2) || {};
         }
+        setStnMorning(convMorn);
+        setStnNight(convNight);
+
+        var lcmMornLoad = Object.keys(d.stationLcmMorning||{}).length > 0
+          ? d.stationLcmMorning : convMorn;
+        var lcmNightLoad = Object.keys(d.stationLcmNight||{}).length > 0
+          ? d.stationLcmNight : convNight;
+        setStLcmMorn(lcmMornLoad);
+        setStLcmNight(lcmNightLoad);
         if (d.operators && d.operators.length > 0) {
           setOps(d.operators);
         } else if (opsList.length > 0) {
@@ -73,7 +94,7 @@ export default function EntryPage({ globalDate, toast, onSave }) {
         setStnNight({});
         setDefVals({});
         setMatIssue({ copperFoil:'', prepreg:'' });
-        setFields({ output:'', target:'', scrap:'', dent:'', scratch:'', wrinkle:'', notes:'', delayReason:'', noProduction:false });
+        setFields({ output:'', target:'', lcsOutput:'', lcsTarget:'', scrap:'', dent:'', scratch:'', wrinkle:'', notes:'', delayReason:'', noProduction:false });
       }
     }
     loadAll();
@@ -81,13 +102,22 @@ export default function EntryPage({ globalDate, toast, onSave }) {
 
   const autoAoi = ((parseFloat(fields.dent)||0) + (parseFloat(fields.scratch)||0) + (parseFloat(fields.wrinkle)||0)).toFixed(2);
 
+  function sumObj(obj) { return Object.values(obj).reduce(function(s,v){return s+(parseFloat(v)||0);},0); }
+
+  const totalLcmM2    = sumObj(stLcmMorn)  + sumObj(stLcmNight);
+  const totalLcsM2    = sumObj(stLcsMorn)  + sumObj(stLcsNight);
+  const totalLcmBoards = sumObj(stLcmMornB) + sumObj(stLcmNightB);
+  const totalLcsBoards = sumObj(stLcsMornB) + sumObj(stLcsNightB);
+  const autoOutput    = totalLcmM2 + totalLcsM2;
+  const autoBoards    = totalLcmBoards + totalLcsBoards;
+
   const totalMh = ops.reduce(function(s, o) {
     const sh = SHIFT_OPTIONS.find(function(x){ return x.value === (o.shift||'day'); }) || SHIFT_OPTIONS[0];
     return s + sh.hours;
   }, 0);
 
   const totalM2hr = totalMh > 0 && parseFloat(fields.output) > 0
-    ? (parseFloat(fields.output) / totalMh).toFixed(2) : 0;
+    ? parseFloat((parseFloat(fields.output) / totalMh).toFixed(2)) : 0;
 
   function setShift(idx, val) {
     setOps(function(prev) {
@@ -141,8 +171,10 @@ export default function EntryPage({ globalDate, toast, onSave }) {
   async function handleSave() {
     setSaving(true);
     const ok = await storageSet('day:' + globalDate, {
-      output:       parseFloat(fields.output)  || 0,
-      target:       parseFloat(fields.target)  || 0,
+      output:       parseFloat(fields.output)    || 0,
+      target:       parseFloat(fields.target)    || 0,
+      lcs_output:   parseFloat(fields.lcsOutput) || 0,
+      lcs_target:   parseFloat(fields.lcsTarget) || 0,
       scrap:        parseFloat(fields.scrap)   || 0,
       aoi:          parseFloat(autoAoi)        || 0,
       dent:         parseFloat(fields.dent)    || 0,
@@ -153,10 +185,19 @@ export default function EntryPage({ globalDate, toast, onSave }) {
       notes:        fields.notes,
       delayReason:  fields.delayReason,
       noProduction: fields.noProduction || false,
+      stationLcmMorning:       stLcmMorn,
+      stationLcmMorningBoards: stLcmMornB,
+      stations_morning:        stLcmMorn,
+      stationLcsMorning:       stLcsMorn,
+      stationLcsMorningBoards: stLcsMornB,
+      stationLcmNight:         stLcmNight,
+      stationLcmNightBoards:   stLcmNightB,
+      stations_night:          stLcmNight,
+      stationLcsNight:         stLcsNight,
+      stationLcsNightBoards:   stLcsNightB,
       defects:          defVals,
       stations:         stnMorning,
-      stations_morning: stnMorning,
-      stations_night:   stnNight,
+
       operators:        ops,
     });
     if (ok) {
@@ -193,8 +234,8 @@ export default function EntryPage({ globalDate, toast, onSave }) {
             onClick={function(){
               var np = !fields.noProduction;
               setFields(function(f){ return Object.assign({},f,{
-                noProduction:np, output:np?'0':'', scrap:np?'0':'',
-                dent:np?'0':'', scratch:np?'0':'', wrinkle:np?'0':'',
+                noProduction:np, output:np?'0':'', lcsOutput:np?'0':'',
+                scrap:np?'0':'', dent:np?'0':'', scratch:np?'0':'', wrinkle:np?'0':'',
               });});
               if (np) toast('Marked as no production day');
             }}>
@@ -212,17 +253,39 @@ export default function EntryPage({ globalDate, toast, onSave }) {
             Marked as no production — output and scrap set to 0.
           </div>
         )}
-        <div className="form-grid">
-          <div className="fg">
-            <label>Daily output (m²)</label>
-            <input type="number" value={fields.output} disabled={fields.noProduction}
-              style={{background:fields.noProduction?'var(--bg3)':'',cursor:fields.noProduction?'not-allowed':''}}
-              onChange={function(e){setFields(function(f){return Object.assign({},f,{output:e.target.value});});}} />
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}}>
+          <div style={{background:'rgba(55,138,221,0.06)',borderRadius:8,padding:'10px 12px',border:'1px solid rgba(55,138,221,0.15)'}}>
+            <div style={{fontSize:11,fontWeight:600,color:'#185FA5',marginBottom:8}}>🔵 LCM (m²)</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              <div className="fg" style={{margin:0}}>
+                <label style={{fontSize:10}}>Output (m²)</label>
+                <input type="number" step=".1" value={fields.output} disabled={fields.noProduction}
+                  style={{background:fields.noProduction?'var(--bg3)':''}}
+                  onChange={function(e){setFields(function(f){return Object.assign({},f,{output:e.target.value});});}} />
+              </div>
+              <div className="fg" style={{margin:0}}>
+                <label style={{fontSize:10}}>Target (m²)</label>
+                <input type="number" step=".1" value={fields.target}
+                  onChange={function(e){setFields(function(f){return Object.assign({},f,{target:e.target.value});});}} />
+              </div>
+            </div>
           </div>
-          <div className="fg">
-            <label>Target (m²)</label>
-            <input type="number" value={fields.target}
-              onChange={function(e){setFields(function(f){return Object.assign({},f,{target:e.target.value});});}} />
+          <div style={{background:'rgba(226,75,74,0.06)',borderRadius:8,padding:'10px 12px',border:'1px solid rgba(226,75,74,0.15)'}}>
+            <div style={{fontSize:11,fontWeight:600,color:'#A32D2D',marginBottom:8}}>🔴 LCS (boards)</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              <div className="fg" style={{margin:0}}>
+                <label style={{fontSize:10}}>Output (boards)</label>
+                <input type="number" value={fields.lcsOutput} disabled={fields.noProduction}
+                  style={{background:fields.noProduction?'var(--bg3)':''}}
+                  onChange={function(e){setFields(function(f){return Object.assign({},f,{lcsOutput:e.target.value});});}} />
+              </div>
+              <div className="fg" style={{margin:0}}>
+                <label style={{fontSize:10}}>Target (boards)</label>
+                <input type="number" value={fields.lcsTarget}
+                  onChange={function(e){setFields(function(f){return Object.assign({},f,{lcsTarget:e.target.value});});}} />
+              </div>
+            </div>
           </div>
         </div>
         {showDelayWarning && (
@@ -287,46 +350,129 @@ export default function EntryPage({ globalDate, toast, onSave }) {
 
       {/* Station output — uses station NAME as key */}
       <div className="card" style={{marginBottom:10}}>
-        <div className="section-lbl">Station output</div>
-        <div style={{overflowX:'auto'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead>
-              <tr>
-                <th style={{textAlign:'left',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Station</th>
-                <th style={{textAlign:'center',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Morning 7am–7pm (m²)</th>
-                <th style={{textAlign:'center',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Night 7pm–7am (m²)</th>
-                <th style={{textAlign:'center',padding:'6px 10px',fontSize:11,fontWeight:600,color:'var(--text2)',borderBottom:'1px solid var(--border)',whiteSpace:'nowrap'}}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stationNames.map(function(stn) {
-                var m = parseFloat(stnMorning[stn.name]||0);
-                var n2 = parseFloat(stnNight[stn.name]||0);
-                var total = m + n2;
-                return (
-                  <tr key={stn.name} style={{borderBottom:'1px solid var(--border)'}}>
-                    <td style={{padding:'5px 10px',fontSize:12,fontWeight:500,whiteSpace:'nowrap'}}>{stn.name}</td>
-                    <td style={{padding:'5px 10px',textAlign:'center'}}>
-                      <input type="number" step=".1" value={stnMorning[stn.name]||''}
-                        placeholder="0"
-                        onChange={function(e){setStnMorning(function(p){return Object.assign({},p,{[stn.name]:e.target.value});});}}
-                        style={{width:90,textAlign:'center',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
-                    </td>
-                    <td style={{padding:'5px 10px',textAlign:'center'}}>
-                      <input type="number" step=".1" value={stnNight[stn.name]||''}
-                        placeholder="0"
-                        onChange={function(e){setStnNight(function(p){return Object.assign({},p,{[stn.name]:e.target.value});});}}
-                        style={{width:90,textAlign:'center',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
-                    </td>
-                    <td style={{padding:'5px 10px',textAlign:'center',fontSize:12,fontWeight:500,color:total>0?'var(--text)':'var(--text3)'}}>
-                      {total > 0 ? total.toFixed(1) : '—'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+          <div className="section-lbl" style={{margin:0}}>Station output — LCM &amp; LCS</div>
+          <div style={{fontSize:10,color:'var(--text2)'}}>Click station to expand · Enter m² and boards per product</div>
         </div>
+        {/* Header */}
+        <div style={{display:'grid',gridTemplateColumns:'140px 1fr 1fr',gap:0,marginBottom:4}}>
+          <div style={{fontSize:10,fontWeight:600,color:'var(--text2)',padding:'4px 8px'}}>Station</div>
+          <div style={{fontSize:10,fontWeight:600,color:'#185FA5',padding:'4px 8px',textAlign:'center',background:'rgba(55,138,221,0.06)',borderRadius:'6px 0 0 6px'}}>🔵 LCM</div>
+          <div style={{fontSize:10,fontWeight:600,color:'#A32D2D',padding:'4px 8px',textAlign:'center',background:'rgba(226,75,74,0.06)',borderRadius:'0 6px 6px 0'}}>🔴 LCS</div>
+        </div>
+        {/* Column headers */}
+        <div style={{display:'grid',gridTemplateColumns:'140px 1fr 80px',gap:0,marginBottom:4,padding:'0 10px',fontSize:10,color:'var(--text2)',fontWeight:600}}>
+          <span>Station</span>
+          <span>Summary</span>
+          <span style={{textAlign:'right'}}>Expand</span>
+        </div>
+        {stationNames.map(function(stn) {
+          var name = stn.name;
+          var lcmMornM2 = parseFloat(stLcmMorn[name]||0);
+          var lcsM2Val  = parseFloat(stLcsMorn[name]||0);
+          var lcmNightM2Val = parseFloat(stLcmNight[name]||0);
+          var lcsNightM2Val = parseFloat(stLcsNight[name]||0);
+          var totalM2   = lcmMornM2+lcsM2Val+lcmNightM2Val+lcsNightM2Val;
+          var totalB    = (parseFloat(stLcmMornB[name]||0))+(parseFloat(stLcsMornB[name]||0))+(parseFloat(stLcmNightB[name]||0))+(parseFloat(stLcsNightB[name]||0));
+          var isExpanded = expandedStn === name;
+          var hasData    = totalM2 > 0 || totalB > 0;
+          return (
+            <div key={name} style={{marginBottom:3,borderRadius:8,border:'1px solid '+(isExpanded?'#378ADD':'var(--border)'),overflow:'hidden'}}>
+              <div style={{display:'flex',alignItems:'center',padding:'7px 10px',cursor:'pointer',background:isExpanded?'rgba(55,138,221,0.05)':hasData?'rgba(29,158,117,0.03)':'',gap:8}}
+                onClick={function(){setExpandedStn(isExpanded?null:name);}}>
+                <span style={{fontWeight:500,fontSize:12,color:'var(--text)',flex:'0 0 130px',whiteSpace:'nowrap'}}>{name}</span>
+                <div style={{display:'flex',gap:8,flex:1,fontSize:11,flexWrap:'wrap',alignItems:'center'}}>
+                  <span style={{color:'#378ADD',fontWeight:500}}>
+                    LCM: {(lcmMornM2+lcmNightM2Val).toFixed(1)} m²
+                    {(parseFloat(stLcmMornB[name]||0)+parseFloat(stLcmNightB[name]||0))>0 && (
+                      <span style={{fontWeight:400,color:'var(--text2)'}}> · {parseFloat(stLcmMornB[name]||0)+parseFloat(stLcmNightB[name]||0)} boards</span>
+                    )}
+                  </span>
+                  <span style={{color:'var(--text3)'}}>|</span>
+                  <span style={{color:'#E24B4A',fontWeight:500}}>
+                    LCS: {(lcsM2Val+lcsNightM2Val).toFixed(1)} m²
+                    {(parseFloat(stLcsMornB[name]||0)+parseFloat(stLcsNightB[name]||0))>0 && (
+                      <span style={{fontWeight:400,color:'var(--text2)'}}> · {parseFloat(stLcsMornB[name]||0)+parseFloat(stLcsNightB[name]||0)} boards</span>
+                    )}
+                  </span>
+                  {totalM2===0 && <span style={{color:'var(--text3)'}}>click to enter</span>}
+                </div>
+                <span style={{fontSize:11,color:'var(--text3)',flexShrink:0}}>{isExpanded?'▲':'▼'}</span>
+              </div>
+              {isExpanded && (
+                <div style={{padding:'10px 12px',borderTop:'1px solid var(--border)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                  {/* LCM */}
+                  <div style={{background:'rgba(55,138,221,0.05)',borderRadius:7,padding:'8px 10px'}}>
+                    <div style={{fontSize:11,fontWeight:600,color:'#185FA5',marginBottom:8}}>🔵 LCM</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:6}}>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Morning m²</div>
+                        <input type="number" step=".1" value={stLcmMorn[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcmMorn(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Morning boards</div>
+                        <input type="number" value={stLcmMornB[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcmMornB(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Night m²</div>
+                        <input type="number" step=".1" value={stLcmNight[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcmNight(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Night boards</div>
+                        <input type="number" value={stLcmNightB[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcmNightB(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                    </div>
+                    <div style={{fontSize:11,color:'#185FA5',fontWeight:500}}>
+                      Total: {(lcmMornM2+lcmNightM2Val).toFixed(1)} m² · {(parseFloat(stLcmMornB[name]||0)+parseFloat(stLcmNightB[name]||0))} boards
+                    </div>
+                  </div>
+                  {/* LCS */}
+                  <div style={{background:'rgba(226,75,74,0.05)',borderRadius:7,padding:'8px 10px'}}>
+                    <div style={{fontSize:11,fontWeight:600,color:'#A32D2D',marginBottom:8}}>🔴 LCS</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:6}}>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Morning m²</div>
+                        <input type="number" step=".1" value={stLcsMorn[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcsMorn(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Morning boards</div>
+                        <input type="number" value={stLcsMornB[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcsMornB(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Night m²</div>
+                        <input type="number" step=".1" value={stLcsNight[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcsNight(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:'var(--text2)',marginBottom:3}}>Night boards</div>
+                        <input type="number" value={stLcsNightB[name]||''} placeholder="0" disabled={fields.noProduction}
+                          onChange={function(e){setStLcsNightB(function(p){return Object.assign({},p,{[name]:e.target.value});});}}
+                          style={{width:'100%',fontSize:12,padding:'4px 6px',border:'1px solid var(--border2)',borderRadius:5,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                      </div>
+                    </div>
+                    <div style={{fontSize:11,color:'#A32D2D',fontWeight:500}}>
+                      Total: {(lcsM2Val+lcsNightM2Val).toFixed(1)} m² · {(parseFloat(stLcsMornB[name]||0)+parseFloat(stLcsNightB[name]||0))} boards
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
       </div>
 
       {/* Materials */}
