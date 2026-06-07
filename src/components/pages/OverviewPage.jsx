@@ -23,6 +23,7 @@ export default function OverviewPage({ allDays, darkMode }) {
 
   const [outputView, setOutputView] = useState('lcm');
   const [stationView, setStationView] = useState('lcm');
+  const [donutView, setDonutView]     = useState('lcm');
 
   function update() { setFiltered(filterDays(allDays, from, to)); }
   useEffect(function() { update(); }, [allDays, from, to]);
@@ -80,6 +81,14 @@ export default function OverviewPage({ allDays, darkMode }) {
   });
   const hasProductType = lcmM2.some(function(v){return v!==null&&v>0;}) || lcsM2.some(function(v){return v!==null&&v>0;});
 
+
+  const totalLcsMornBoards = filtered.reduce(function(s,x){
+    return s+Object.values(x.data.stationLcsMorningBoards||{}).reduce(function(a,b){return a+(parseFloat(b)||0);},0);
+  },0);
+  const totalLcsNightBoards = filtered.reduce(function(s,x){
+    return s+Object.values(x.data.stationLcsNightBoards||{}).reduce(function(a,b){return a+(parseFloat(b)||0);},0);
+  },0);
+
   const totalOut = outs.reduce(function(a,b){return a+(b||0);},0);
   const totalTgt = tgts.reduce(function(a,b){return a+b;},0);
   const diff     = totalOut - totalTgt;
@@ -113,16 +122,24 @@ export default function OverviewPage({ allDays, darkMode }) {
     return parseFloat(byIdx) || 0;
   }
 
-  const lcmMornTotals = {};
+  const lcmMornTotals  = {};
   const lcmNightTotals = {};
-  const lcsMornTotals  = {};
-  const lcsNightTotals = {};
+  const lcmMornBTotals = {};
+  const lcmNightBTotals= {};
+  const lcsMornTotals   = {};
+  const lcsNightTotals  = {};
+  const lcsM2MornTotals = {};
+  const lcsM2NightTotals= {};
   for (var li = 1; li <= N_STN; li++) {
     var sname = STN_NAMES_ORD[li-1];
-    lcmMornTotals[li]  = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmMorning||{})[sname])||0);},0);
-    lcmNightTotals[li] = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmNight||{})[sname])||0);},0);
-    lcsMornTotals[li]  = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsMorningBoards||{})[sname])||0);},0);
-    lcsNightTotals[li] = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsNightBoards||{})[sname])||0);},0);
+    lcmMornTotals[sname]   = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmMorning||{})[sname])||0);},0);
+    lcmNightTotals[sname]  = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmNight||{})[sname])||0);},0);
+    lcmMornBTotals[sname]  = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmMorningBoards||{})[sname])||0);},0);
+    lcmNightBTotals[sname] = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcmNightBoards||{})[sname])||0);},0);
+    lcsMornTotals[sname]   = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsMorningBoards||{})[sname])||0);},0);
+    lcsNightTotals[sname]  = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsNightBoards||{})[sname])||0);},0);
+    lcsM2MornTotals[sname] = filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsMorning||{})[sname])||0);},0);
+    lcsM2NightTotals[sname]= filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsNight||{})[sname])||0);},0);
   }
 
   const stnTotals = {};
@@ -141,6 +158,8 @@ export default function OverviewPage({ allDays, darkMode }) {
 
   const totalMorning = Object.values(morningTotals).reduce(function(a,b){return a+b;},0);
   const totalNight   = Object.values(nightTotals).reduce(function(a,b){return a+b;},0);
+  const totalLcmMornDonut  = totalMorning;
+  const totalLcmNightDonut = totalNight;
 
   const opNormal  = filtered.map(function(x){return (x.data.operators||[]).filter(function(o){return o.shift==='day'||o.shift==='night';}).length;});
   const opCutSelf = filtered.map(function(x){return (x.data.operators||[]).filter(function(o){return o.shift==='cut_self';}).length;});
@@ -424,14 +443,44 @@ export default function OverviewPage({ allDays, darkMode }) {
           </div>
         </div>
         <div className="card">
-          <div className="card-head"><div><div className="card-title">Morning vs night</div><div className="card-sub">Total output split</div></div></div>
+          <div className="card-head">
+            <div><div className="card-title">Morning vs night</div><div className="card-sub">{donutView==='lcm'?'LCM m²':'LCS boards'} split</div></div>
+            <div style={{display:'flex',gap:4}}>
+              <button onClick={function(){setDonutView('lcm');}}
+                style={{padding:'2px 8px',borderRadius:12,border:'1.5px solid #378ADD',fontSize:10,cursor:'pointer',
+                  background:donutView==='lcm'?'#378ADD':'transparent',color:donutView==='lcm'?'#fff':'#378ADD',fontWeight:500}}>
+                🔵 LCM
+              </button>
+              <button onClick={function(){setDonutView('lcs');}}
+                style={{padding:'2px 8px',borderRadius:12,border:'1.5px solid #E24B4A',fontSize:10,cursor:'pointer',
+                  background:donutView==='lcs'?'#E24B4A':'transparent',color:donutView==='lcs'?'#fff':'#E24B4A',fontWeight:500}}>
+                🔴 LCS
+              </button>
+            </div>
+          </div>
           <div className="legend-row">
-            <span className="leg"><span className="leg-dot" style={{background:'#378ADD'}}></span>Morning {totalMorning>0?(totalMorning/(totalMorning+totalNight)*100).toFixed(0):0}%</span>
-            <span className="leg"><span className="leg-dot" style={{background:'#EF9F27'}}></span>Night {totalNight>0?(totalNight/(totalMorning+totalNight)*100).toFixed(0):0}%</span>
+            <span className="leg"><span className="leg-dot" style={{background:'#378ADD'}}></span>
+              Morning {donutView==='lcm'
+                ? (totalLcmMornDonut>0?(totalLcmMornDonut/(totalLcmMornDonut+totalLcmNightDonut)*100).toFixed(0):0)+'%'
+                : (totalLcsMornBoards>0?(totalLcsMornBoards/(totalLcsMornBoards+totalLcsNightBoards)*100).toFixed(0):0)+'%'}
+            </span>
+            <span className="leg"><span className="leg-dot" style={{background:'#EF9F27'}}></span>
+              Night {donutView==='lcm'
+                ? (totalLcmNightDonut>0?(totalLcmNightDonut/(totalLcmMornDonut+totalLcmNightDonut)*100).toFixed(0):0)+'%'
+                : (totalLcsNightBoards>0?(totalLcsNightBoards/(totalLcsMornBoards+totalLcsNightBoards)*100).toFixed(0):0)+'%'}
+            </span>
           </div>
           <div style={{height:100}}>
-            <Doughnut data={{labels:['Morning','Night'],datasets:[{data:[totalMorning,totalNight],backgroundColor:['#378ADD','#EF9F27'],borderWidth:0,hoverOffset:4}]}}
-              options={{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}} />
+            <Doughnut
+              key={'donut-mn-'+donutView}
+              data={{labels:['Morning','Night'],datasets:[{
+                data: donutView==='lcm'
+                  ? [totalLcmMornDonut, totalLcmNightDonut]
+                  : [totalLcsMornBoards, totalLcsNightBoards],
+                backgroundColor:['#378ADD','#EF9F27'],borderWidth:0,hoverOffset:4
+              }]}}
+              options={{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}}
+            />
           </div>
         </div>
       </div>
@@ -530,18 +579,25 @@ export default function OverviewPage({ allDays, darkMode }) {
 
       <div className="card" style={{marginBottom:12}}>
         <div className="card-head">
-          <div><div className="card-title">Morning vs night shift per station</div><div className="card-sub">{stationView==='lcm'?'Total m² over period':'Total boards over period'}</div></div>
-          <div style={{display:'flex',gap:6}}>
-            <button onClick={function(){setStationView('lcm');}}
-              style={{padding:'3px 10px',borderRadius:14,border:'1.5px solid #378ADD',fontSize:11,cursor:'pointer',
-                background:stationView==='lcm'?'#378ADD':'transparent',color:stationView==='lcm'?'#fff':'#378ADD',fontWeight:500}}>
-              🔵 LCM
-            </button>
-            <button onClick={function(){setStationView('lcs');}}
-              style={{padding:'3px 10px',borderRadius:14,border:'1.5px solid #E24B4A',fontSize:11,cursor:'pointer',
-                background:stationView==='lcs'?'#E24B4A':'transparent',color:stationView==='lcs'?'#fff':'#E24B4A',fontWeight:500}}>
-              🔴 LCS
-            </button>
+          <div><div className="card-title">Morning vs night shift per station</div><div className="card-sub">
+            {stationView==='lcmm2'?'LCM m²':stationView==='lcmb'?'LCM boards':stationView==='lcsm2'?'LCS m²':stationView==='lcsb'?'LCS boards':stationView==='totalm2'?'Total m² (LCM+LCS)':'Total boards (LCM+LCS)'}
+          </div></div>
+          <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+            {[
+              {key:'lcmm2',   label:'🔵 LCM m²',         color:'#378ADD'},
+              {key:'lcmb',    label:'🔵 LCM boards',      color:'#185FA5'},
+              {key:'lcsm2',   label:'🔴 LCS m²',          color:'#E24B4A'},
+              {key:'lcsb',    label:'🔴 LCS boards',      color:'#A32D2D'},
+              {key:'totalm2', label:'📊 Total m²',        color:'#1D9E75'},
+              {key:'totalb',  label:'📊 Total boards',    color:'#7F77DD'},
+            ].map(function(item){return(
+              <button key={item.key} onClick={function(){setStationView(item.key);}}
+                style={{padding:'3px 8px',borderRadius:14,border:'1.5px solid '+item.color,fontSize:10,cursor:'pointer',
+                  background:stationView===item.key?item.color:'transparent',
+                  color:stationView===item.key?'#fff':item.color,fontWeight:500}}>
+                {item.label}
+              </button>
+            );})}
           </div>
         </div>
         <div className="legend-row">
@@ -549,13 +605,36 @@ export default function OverviewPage({ allDays, darkMode }) {
           <span className="leg"><span className="leg-dot" style={{background:'#EF9F27'}}></span>Night</span>
         </div>
         <div style={{height:220}}>
-          <Bar data={{labels:stnNames,datasets:stationView==='lcm'?[
-            {label:'LCM Morning',data:stnNames.map(function(_,i){return lcmMornTotals[i+1]||morningTotals[i+1]||0;}),backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
-            {label:'LCM Night',  data:stnNames.map(function(_,i){return lcmNightTotals[i+1]||nightTotals[i+1]||0;}), backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
-          ]:[
-            {label:'LCS Morning',data:stnNames.map(function(_,i){return lcsMornTotals[i+1]||0;}), backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
-            {label:'LCS Night',  data:stnNames.map(function(_,i){return lcsNightTotals[i+1]||0;}),backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
-          ]}} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+          <Bar data={{labels:stnNames,datasets:(function(){
+            if (stationView==='lcmm2')  return [
+              {label:'LCM Morning m²',   data:stnNames.map(function(n,i){return lcmMornTotals[n]||morningTotals[i+1]||0;}),  backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
+              {label:'LCM Night m²',     data:stnNames.map(function(n,i){return lcmNightTotals[n]||nightTotals[i+1]||0;}),   backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
+            ];
+            if (stationView==='lcmb')   return [
+              {label:'LCM Morning boards',data:stnNames.map(function(n){return lcmMornBTotals[n]||0;}),  backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
+              {label:'LCM Night boards',  data:stnNames.map(function(n){return lcmNightBTotals[n]||0;}), backgroundColor:'#185FA5',borderRadius:3,stack:'s'},
+            ];
+            if (stationView==='lcsm2')  return [
+              {label:'LCS Morning m²',   data:stnNames.map(function(n){return lcsM2MornTotals[n]||0;}),  backgroundColor:'#E24B4A',borderRadius:3,stack:'s'},
+              {label:'LCS Night m²',     data:stnNames.map(function(n){return lcsM2NightTotals[n]||0;}), backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
+            ];
+            if (stationView==='lcsb')   return [
+              {label:'LCS Morning boards',data:stnNames.map(function(n){return lcsMornTotals[n]||0;}),  backgroundColor:'#E24B4A',borderRadius:3,stack:'s'},
+              {label:'LCS Night boards',  data:stnNames.map(function(n){return lcsNightTotals[n]||0;}), backgroundColor:'#A32D2D',borderRadius:3,stack:'s'},
+            ];
+
+            if (stationView==='totalm2') return [
+              {label:'Morning m²',data:stnNames.map(function(n,i){return (lcmMornTotals[n]||morningTotals[i+1]||0)+(lcsMornTotals[n]||0);}),  backgroundColor:'#378ADD',borderRadius:3,stack:'s'},
+              {label:'Night m²',  data:stnNames.map(function(n,i){return (lcmNightTotals[n]||nightTotals[i+1]||0)+(lcsNightTotals[n]||0);}),   backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
+            ];
+            return [
+              {label:'Morning boards',data:stnNames.map(function(n){return (lcmMornBTotals[n]||0)+(lcsMornTotals[n]||0);}),  backgroundColor:'#7F77DD',borderRadius:3,stack:'s'},
+              {label:'Night boards',  data:stnNames.map(function(n){return (lcmNightBTotals[n]||0)+(lcsNightTotals[n]||0);}), backgroundColor:'#EF9F27',borderRadius:3,stack:'s'},
+            ];
+          })()}} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
+            var unit = ['lcmm2','lcsm2','totalm2'].indexOf(stationView)>=0?' m²':' boards';
+            return ctx.dataset.label+': '+ctx.parsed.y+unit;
+          }}}},scales:{
             x:{stacked:true,ticks:{font:{size:9},autoSkip:false,maxRotation:45,color:tickColor},grid:{display:false}},
             y:{stacked:true,ticks:{font:{size:9},color:tickColor},grid:{color:gridColor}}
           }}} />

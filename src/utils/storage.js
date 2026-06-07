@@ -17,6 +17,16 @@ export async function storageGet(key) {
       defects: data.defects, stations: data.stations,
       stations_morning: data.stations_morning, stations_night: data.stations_night,
       operators: data.operators,
+      stationLcmMorning:       data.station_lcm_morning        || {},
+      stationLcmMorningBoards: data.station_lcm_morning_boards || {},
+      stationLcsMorning:       data.station_lcs_morning        || {},
+      stationLcsMorningBoards: data.station_lcs_morning_boards || {},
+      stationLcmNight:         data.station_lcm_night          || {},
+      stationLcmNightBoards:   data.station_lcm_night_boards   || {},
+      stationLcsNight:         data.station_lcs_night          || {},
+      stationLcsNightBoards:   data.station_lcs_night_boards   || {},
+      lcsOutput: data.lcs_output || 0,
+      lcsTarget: data.lcs_target || 0,
     };
   }
   return null;
@@ -34,9 +44,19 @@ export async function storageSet(key, value) {
       delay_reason: value.delayReason,
       no_production: value.noProduction || false,
       defects: value.defects, stations: value.stations,
-      stations_morning: value.stations_morning || {},
-      stations_night: value.stations_night || {},
-      operators: value.operators,
+      stations_morning:            value.stations_morning        || {},
+      stations_night:              value.stations_night          || {},
+      operators:                   value.operators,
+      station_lcm_morning:         value.stationLcmMorning       || {},
+      station_lcm_morning_boards:  value.stationLcmMorningBoards || {},
+      station_lcs_morning:         value.stationLcsMorning       || {},
+      station_lcs_morning_boards:  value.stationLcsMorningBoards || {},
+      station_lcm_night:           value.stationLcmNight         || {},
+      station_lcm_night_boards:    value.stationLcmNightBoards   || {},
+      station_lcs_night:           value.stationLcsNight         || {},
+      station_lcs_night_boards:    value.stationLcsNightBoards   || {},
+      lcs_output:   value.lcsOutput || 0,
+      lcs_target:   value.lcsTarget || 0,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'entry_date' });
     return !error;
@@ -71,6 +91,16 @@ export async function getAllDays() {
         defects: d.defects, stations: d.stations,
         stations_morning: d.stations_morning, stations_night: d.stations_night,
         operators: d.operators,
+        stationLcmMorning:       d.station_lcm_morning        || {},
+        stationLcmMorningBoards: d.station_lcm_morning_boards || {},
+        stationLcsMorning:       d.station_lcs_morning        || {},
+        stationLcsMorningBoards: d.station_lcs_morning_boards || {},
+        stationLcmNight:         d.station_lcm_night          || {},
+        stationLcmNightBoards:   d.station_lcm_night_boards   || {},
+        stationLcsNight:         d.station_lcs_night          || {},
+        stationLcsNightBoards:   d.station_lcs_night_boards   || {},
+        lcsOutput: d.lcs_output || 0,
+        lcsTarget: d.lcs_target || 0,
       }
     };
   });

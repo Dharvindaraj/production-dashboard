@@ -79,6 +79,12 @@ export default function EntryPage({ globalDate, toast, onSave }) {
           ? d.stationLcmNight : convNight;
         setStLcmMorn(lcmMornLoad);
         setStLcmNight(lcmNightLoad);
+        setStLcmMornB(d.stationLcmMorningBoards || {});
+        setStLcmNightB(d.stationLcmNightBoards  || {});
+        setStLcsMorn(d.stationLcsMorning         || {});
+        setStLcsMornB(d.stationLcsMorningBoards  || {});
+        setStLcsNight(d.stationLcsNight          || {});
+        setStLcsNightB(d.stationLcsNightBoards   || {});
         if (d.operators && d.operators.length > 0) {
           setOps(d.operators);
         } else if (opsList.length > 0) {
