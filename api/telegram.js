@@ -85,10 +85,25 @@ async function saveToSupabase(extracted) {
 
   for (const entry of entries) {
     const date    = entry.date;
-    const station = entry.station;
     const shift   = entry.shift;
     const m2      = entry.m2 || 0;
     const boards  = entry.boards || 0;
+    const stnMap  = {
+      'layup 1':'Layup 1','lay up 1':'Layup 1','layup1':'Layup 1',
+      'layup 2':'Layup 2','lay up 2':'Layup 2','layup2':'Layup 2',
+      'oxide':'Oxide','glicap':'Glicap','baking':'Baking','rivet':'Rivet',
+      'setup':'Setup','preparation':'Preparation',
+      'pulse bonding':'Pulse bonding','pulse':'Pulse bonding',
+      'ccd welding':'CCD Welding','ccd':'CCD Welding',
+      'vigor press':'Vigor press','vigor':'Vigor press',
+      'buckle press':'Buckle press','buckle':'Buckle press',
+      'routing 1':'Routing 1','routing1':'Routing 1',
+      'routing 2':'Routing 2','routing2':'Routing 2',
+      'xray 1':'Xray 1','xray1':'Xray 1','x-ray 1':'Xray 1','x-ray':'Xray 1','xray':'Xray 1',
+      'xray 2':'Xray 2','xray2':'Xray 2','x-ray 2':'Xray 2',
+      'ttst':'TTST',
+    };
+    const station = stnMap[(entry.station||'').toLowerCase().trim()] || entry.station;
 
     const getRes = await fetch(
       `${SUPABASE_URL}/rest/v1/daily_entries?entry_date=eq.${date}&select=*`,
