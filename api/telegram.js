@@ -123,25 +123,37 @@ async function saveToSupabase(extracted) {
       if (isMorning) { lcmMorn[station]=m2;  lcmMornB[station]=boards; }
       else           { lcmNight[station]=m2; lcmNightB[station]=boards; }
 
-      await fetch(`${SUPABASE_URL}/rest/v1/daily_entries`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates',
-        },
-        body: JSON.stringify({
-          entry_date:                  date,
-          station_lcm_morning:         lcmMorn,
-          station_lcm_morning_boards:  lcmMornB,
-          station_lcm_night:           lcmNight,
-          station_lcm_night_boards:    lcmNightB,
-          stations_morning:            lcmMorn,
-          stations_night:              lcmNight,
-          updated_at:                  new Date().toISOString(),
-        }),
-      });
+      const lcmPayload = {
+        station_lcm_morning:         lcmMorn,
+        station_lcm_morning_boards:  lcmMornB,
+        station_lcm_night:           lcmNight,
+        station_lcm_night_boards:    lcmNightB,
+        stations_morning:            lcmMorn,
+        stations_night:              lcmNight,
+        updated_at:                  new Date().toISOString(),
+      };
+
+      if (current.entry_date) {
+        await fetch(`${SUPABASE_URL}/rest/v1/daily_entries?entry_date=eq.${date}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(lcmPayload),
+        });
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/daily_entries`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(Object.assign({ entry_date: date }, lcmPayload)),
+        });
+      }
     } else {
       var lcsMorn  = current.station_lcs_morning        || {};
       var lcsNight = current.station_lcs_night          || {};
@@ -151,23 +163,35 @@ async function saveToSupabase(extracted) {
       if (isMorning) { lcsMorn[station]=m2;  lcsMornB[station]=boards; }
       else           { lcsNight[station]=m2; lcsNightB[station]=boards; }
 
-      await fetch(`${SUPABASE_URL}/rest/v1/daily_entries`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates',
-        },
-        body: JSON.stringify({
-          entry_date:                  date,
-          station_lcs_morning:         lcsMorn,
-          station_lcs_morning_boards:  lcsMornB,
-          station_lcs_night:           lcsNight,
-          station_lcs_night_boards:    lcsNightB,
-          updated_at:                  new Date().toISOString(),
-        }),
-      });
+      const lcsPayload = {
+        station_lcs_morning:         lcsMorn,
+        station_lcs_morning_boards:  lcsMornB,
+        station_lcs_night:           lcsNight,
+        station_lcs_night_boards:    lcsNightB,
+        updated_at:                  new Date().toISOString(),
+      };
+
+      if (current.entry_date) {
+        await fetch(`${SUPABASE_URL}/rest/v1/daily_entries?entry_date=eq.${date}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(lcsPayload),
+        });
+      } else {
+        await fetch(`${SUPABASE_URL}/rest/v1/daily_entries`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(Object.assign({ entry_date: date }, lcsPayload)),
+        });
+      }
     }
   }
 }
