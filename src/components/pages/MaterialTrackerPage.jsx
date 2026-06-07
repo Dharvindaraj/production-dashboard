@@ -35,7 +35,7 @@ export default function MaterialTrackerPage({ darkMode, toast, allDays }) {
     reader.onload = function(e) {
       const wb   = XLSX.read(e.target.result, { type:'binary', cellDates:true });
       const ws   = wb.Sheets[wb.SheetNames[0]];
-      const range = XLSX.utils.decode_range(ws['!ref']);
+      const range  = XLSX.utils.decode_range(ws['!ref']);
       const merges = ws['!merges'] || [];
       const allRows = [];
       for (var R = range.s.r; R <= range.e.r; R++) {
