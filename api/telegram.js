@@ -38,8 +38,14 @@ Rules:
 - product: "LCM" or "LCS". If not mentioned and no LCS keyword, assume "LCM"
 - m2: total m2 value. Priority order: 1) TOTAL PRESS M² line, 2) Total: line, 3) sum of individual lines. Ignore individual press breakdowns (Press 1, Press 2, Pm4, Pm6 etc)
 - boards: board quantity. Priority order: 1) TOTAL PRESS Board Qty, 2) B.Qty, 3) Board Qty total line, 4) number in brackets like (2,397board). Always use the TOTAL not individual lines.
-- station: map "Buckle" or "Burkle" = "Buckle press", "Vigor" = "Vigor press", "Routing" alone = "Routing 1"
-- If message has TOTAL PRESS section, use those values for m2 and boards
+- station: VERY IMPORTANT - map these correctly:
+  * "Buckle" or "Burkle" or "Buckle Press" = "Buckle press"
+  * "Vigor" or "Vigor Press" = "Vigor press"  
+  * "Routing" alone = "Routing 1"
+  * Never use "Press", "Press 1", "Press 2" etc as station names - these are machine numbers inside a station
+  * The station name is always in the HEADER of the message, not inside the breakdown
+- If message has TOTAL PRESS or TOTAL section, use those values for m2 and boards
+- Never use individual press breakdown values (Press 1, Press 2, Press 3 etc) as station names
 - reason: any reason or note mentioned. null if none.
 - confidence: "high" if all fields clear, "low" if anything uncertain
 
