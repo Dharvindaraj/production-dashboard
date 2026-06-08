@@ -142,18 +142,40 @@ export default function OverviewPage({ allDays, darkMode }) {
     lcsM2NightTotals[sname]= filtered.reduce(function(s,x){return s+(parseFloat((x.data.stationLcsNight||{})[sname])||0);},0);
   }
 
+  function getStnByName(stationData, name) {
+    if (!stationData) return 0;
+    return parseFloat(stationData[name]) || 0;
+  }
+
   const stnTotals = {};
   for (var si = 1; si <= N_STN; si++) {
+    var sname = STN_NAMES_ORD[si-1];
     stnTotals[si] = filtered.reduce(function(s,x){
-      return s + getStnTotal(x.data.stations,si) + getStnTotal(x.data.stations_morning,si) + getStnTotal(x.data.stations_night,si);
+      return s
+        + getStnByName(x.data.stationLcmMorning, sname)
+        + getStnByName(x.data.stationLcmNight, sname)
+        + getStnByName(x.data.stationLcsMorning, sname)
+        + getStnByName(x.data.stationLcsNight, sname)
+        + getStnTotal(x.data.stations, si)
+        + getStnTotal(x.data.stations_morning, si)
+        + getStnTotal(x.data.stations_night, si);
     },0);
   }
 
   const morningTotals = {};
   const nightTotals   = {};
   for (var mi = 1; mi <= N_STN; mi++) {
-    morningTotals[mi] = filtered.reduce(function(s,x){return s+getStnTotal(x.data.stations_morning,mi);},0);
-    nightTotals[mi]   = filtered.reduce(function(s,x){return s+getStnTotal(x.data.stations_night,mi);},0);
+    var mname = STN_NAMES_ORD[mi-1];
+    morningTotals[mi] = filtered.reduce(function(s,x){
+      return s
+        + getStnByName(x.data.stationLcmMorning, mname)
+        + getStnTotal(x.data.stations_morning, mi);
+    },0);
+    nightTotals[mi] = filtered.reduce(function(s,x){
+      return s
+        + getStnByName(x.data.stationLcmNight, mname)
+        + getStnTotal(x.data.stations_night, mi);
+    },0);
   }
 
   const totalMorning = Object.values(morningTotals).reduce(function(a,b){return a+b;},0);

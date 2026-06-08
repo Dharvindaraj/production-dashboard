@@ -20,9 +20,14 @@ export default function StationsPage({ allDays, globalDate, darkMode }) {
   }
 
   function getAllStnVal(dayData, name, idx) {
-    var v = getStnVal(dayData.stations_morning, name, idx)
-          + getStnVal(dayData.stations_night, name, idx);
+    var v = (parseFloat((dayData.stationLcmMorning||{})[name])||0)
+          + (parseFloat((dayData.stationLcmNight||{})[name])||0)
+          + (parseFloat((dayData.stationLcsMorning||{})[name])||0)
+          + (parseFloat((dayData.stationLcsNight||{})[name])||0);
     if (v > 0) return v;
+    var v2 = getStnVal(dayData.stations_morning, name, idx)
+           + getStnVal(dayData.stations_night, name, idx);
+    if (v2 > 0) return v2;
     return getStnVal(dayData.stations, name, idx);
   }
 
