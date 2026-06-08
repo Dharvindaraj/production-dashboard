@@ -36,8 +36,10 @@ Rules:
 - shift: "morning" or "night"
 - station: exact station name from message. Map variations like "X-ray" = "Xray 1", "Lay Up 1" = "Layup 1", "Lay Up 2" = "Layup 2"
 - product: "LCM" or "LCS". If not mentioned and no LCS keyword, assume "LCM"
-- m2: total m2 value. If there is a Total line use that. Ignore individual machine breakdowns (Pm4, Pm6 etc)
-- boards: board quantity. Look for B.Qty, Board Qty, or number in brackets like (2,397board) or (360board)
+- m2: total m2 value. Priority order: 1) TOTAL PRESS M² line, 2) Total: line, 3) sum of individual lines. Ignore individual press breakdowns (Press 1, Press 2, Pm4, Pm6 etc)
+- boards: board quantity. Priority order: 1) TOTAL PRESS Board Qty, 2) B.Qty, 3) Board Qty total line, 4) number in brackets like (2,397board). Always use the TOTAL not individual lines.
+- station: map "Buckle" or "Burkle" = "Buckle press", "Vigor" = "Vigor press", "Routing" alone = "Routing 1"
+- If message has TOTAL PRESS section, use those values for m2 and boards
 - reason: any reason or note mentioned. null if none.
 - confidence: "high" if all fields clear, "low" if anything uncertain
 
@@ -95,9 +97,9 @@ async function saveToSupabase(extracted) {
       'setup':'Setup','preparation':'Preparation',
       'pulse bonding':'Pulse bonding','pulse':'Pulse bonding',
       'ccd welding':'CCD Welding','ccd':'CCD Welding',
-      'vigor press':'Vigor press','vigor':'Vigor press',
-      'buckle press':'Buckle press','buckle':'Buckle press',
-      'routing 1':'Routing 1','routing1':'Routing 1',
+      'vigor press':'Vigor press','vigor':'Vigor press','vigour press':'Vigor press','vigour':'Vigor press',
+      'buckle press':'Buckle press','buckle':'Buckle press','burkle':'Buckle press','burkle press':'Buckle press',
+      'routing 1':'Routing 1','routing1':'Routing 1','routing':'Routing 1',
       'routing 2':'Routing 2','routing2':'Routing 2',
       'xray 1':'Xray 1','xray1':'Xray 1','x-ray 1':'Xray 1','x-ray':'Xray 1','xray':'Xray 1',
       'xray 2':'Xray 2','xray2':'Xray 2','x-ray 2':'Xray 2',
