@@ -32,20 +32,22 @@ async function extractWithGroq(message) {
 Extract structured data from operator messages and return ONLY valid JSON.
 
 Rules:
-- date: extract date in YYYY-MM-DD format. If format is D/MM/YYYY or DD/MM/YYYY convert it.
+- date: extract date in YYYY-MM-DD format. IMPORTANT: Malaysia uses DD/MM/YYYY format always. So 07/06/2026 means 7th June 2026 = 2026-06-07. Never interpret as MM/DD/YYYY.
 - shift: "morning" or "night"
 - station: exact station name from message. Map variations like "X-ray" = "Xray 1", "Lay Up 1" = "Layup 1", "Lay Up 2" = "Layup 2"
 - product: "LCM" or "LCS". If not mentioned and no LCS keyword, assume "LCM"
 - m2: total m2 value. Priority order: 1) TOTAL PRESS M² line, 2) Total: line, 3) sum of individual lines. Ignore individual press breakdowns (Press 1, Press 2, Pm4, Pm6 etc)
 - boards: board quantity. Priority order: 1) TOTAL PRESS Board Qty, 2) B.Qty, 3) Board Qty total line, 4) number in brackets like (2,397board). Always use the TOTAL not individual lines.
-- station: VERY IMPORTANT - map these correctly:
+- station: VERY IMPORTANT - the station name is ALWAYS in the FIRST LINE of the message header, before the date.
   * "Buckle" or "Burkle" or "Buckle Press" = "Buckle press"
-  * "Vigor" or "Vigor Press" = "Vigor press"  
+  * "Vigor press" or "Vigor" = "Vigor press"
   * "Routing" alone = "Routing 1"
-  * Never use "Press", "Press 1", "Press 2" etc as station names - these are machine numbers inside a station
-  * The station name is always in the HEADER of the message, not inside the breakdown
-- If message has TOTAL PRESS or TOTAL section, use those values for m2 and boards
-- Never use individual press breakdown values (Press 1, Press 2, Press 3 etc) as station names
+  * NEVER use "Press", "Press A", "Press B", "Press 1", "Press 2", "Press 3", "Press 4" as station names
+  * These are machine unit numbers INSIDE the station, not the station name itself
+  * If you see PRESS A, PRESS B, PRESS C, PRESS D or PRESS 1,2,3,4 inside the message, it means machines within Vigor press or Buckle press
+  * Always look at the very first word/line of the message for the station name
+- If message has TOTAL PRESS section at bottom, use ONLY those Board Qty and M² values
+- Ignore all individual Press A/B/C/D or Press 1/2/3/4 breakdowns
 - reason: any reason or note mentioned. null if none.
 - confidence: "high" if all fields clear, "low" if anything uncertain
 
