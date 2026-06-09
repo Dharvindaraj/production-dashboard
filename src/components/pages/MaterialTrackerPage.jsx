@@ -19,6 +19,11 @@ export default function MaterialTrackerPage({ darkMode, toast, allDays }) {
   const [manualMonth, setManualMonth] = useState(tod().slice(0,7));
   const [pushing, setPushing]       = useState(false);
   const [pushed, setPushed]         = useState(false);
+  const [bulkMode, setBulkMode]     = useState(false);
+  const [bulkData, setBulkData]     = useState(null);
+  const [bulkOutputs, setBulkOutputs] = useState({});
+  const [bulkPushing, setBulkPushing] = useState(false);
+  const [bulkPushed, setBulkPushed] = useState({});
 
   const gridColor = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const tickColor = darkMode ? '#9499b0' : '#666';
@@ -122,6 +127,136 @@ export default function MaterialTrackerPage({ darkMode, toast, allDays }) {
 
   function onDrop(e) { e.preventDefault(); setDragging(false); var f=e.dataTransfer.files[0]; if(f) parseExcel(f); }
   function onFileChange(e) { var f=e.target.files[0]; if(f) parseExcel(f); }
+
+  function parseBulkExcel(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const wb   = XLSX.read(e.target.result, { type:'binary', cellDates:true });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      const merges = ws['!merges'] || [];
+      const allRows = [];
+      for (var R = range.s.r; R <= range.e.r; R++) {
+        var row = [];
+        for (var C = range.s.c; C <= range.e.c; C++) {
+          var addr = XLSX.utils.encode_cell({r:R, c:C});
+          var cell = ws[addr];
+          row.push(cell ? cell.v : null);
+        }
+        allRows.push(row);
+      }
+      merges.forEach(function(merge) {
+        var srcAddr = XLSX.utils.encode_cell({r:merge.s.r, c:merge.s.c});
+        var srcCell = ws[srcAddr];
+        if (!srcCell) return;
+        for (var R2=merge.s.r;R2<=merge.e.r;R2++) {
+          for (var C2=merge.s.c;C2<=merge.e.c;C2++) {
+            if (R2===merge.s.r&&C2===merge.s.c) continue;
+            if (allRows[R2]) allRows[R2][C2]=srcCell.v;
+          }
+        }
+      });
+
+      var headerRow = allRows.findIndex(function(r){
+        return r.some(function(c){return String(c).trim() === 'Date';});
+      });
+      if (headerRow < 0) { toast('Cannot find header row'); return; }
+
+      var dataRows = allRows.slice(headerRow+1);
+      var parsed = dataRows.map(function(r){
+        return {
+          date:        String(r[0]||'').trim(),
+          productName: String(r[3]||'').trim(),
+          qty:         parseFloat(r[6])||0,
+          amountRM:    parseFloat(r[10])||0,
+          unitPriceRM: parseFloat(r[9])||0,
+          specs:       String(r[4]||'').trim(),
+          unit:        String(r[5]||'').trim(),
+          productNo:   String(r[2]||'').trim(),
+          accountName: String(r[29]||'').trim(),
+        };
+      }).filter(function(r){ return r.date && r.date !== 'Date' && r.amountRM > 0; });
+
+      // Group by month
+      var byMonth = {};
+      parsed.forEach(function(r) {
+        var month = String(r.date).slice(0,7);
+        if (!month.match(/\d{4}-\d{2}/)) return;
+        if (!byMonth[month]) byMonth[month] = { copper:[], pp:[], dailyMap:{} };
+        if (r.accountName.includes('COPPER FOIL')) byMonth[month].copper.push(r);
+        else if (r.accountName.includes('PP(OUT)') || r.accountName.includes('- PP(')) byMonth[month].pp.push(r);
+      });
+
+      // Calculate totals per month
+      var result = {};
+      Object.keys(byMonth).sort().forEach(function(month) {
+        var d = byMonth[month];
+        var totalCopper = d.copper.reduce(function(s,r){return s+r.amountRM;},0);
+        var totalPP     = d.pp.reduce(function(s,r){return s+r.amountRM;},0);
+        var dailyMap = {};
+        d.copper.forEach(function(r){
+          var day = String(r.date).slice(0,10);
+          if (!dailyMap[day]) dailyMap[day]={copper:0,pp:0};
+          dailyMap[day].copper += r.amountRM;
+        });
+        d.pp.forEach(function(r){
+          var day = String(r.date).slice(0,10);
+          if (!dailyMap[day]) dailyMap[day]={copper:0,pp:0};
+          dailyMap[day].pp += r.amountRM;
+        });
+        var detailRows = d.copper.map(function(r){return{
+          materialType:'Copper Foil',productNo:r.productNo,productName:r.productName,
+          specs:r.specs,unit:r.unit,qty:r.qty,unitPriceRm:r.unitPriceRM,
+          amountRm:r.amountRM,issueDate:String(r.date).slice(0,10),
+        };}).concat(d.pp.map(function(r){return{
+          materialType:'PP',productNo:r.productNo,productName:r.productName,
+          specs:r.specs,unit:r.unit,qty:r.qty,unitPriceRm:r.unitPriceRM,
+          amountRm:r.amountRM,issueDate:String(r.date).slice(0,10),
+        };}));
+        result[month] = { totalCopper, totalPP, totalRM:totalCopper+totalPP, dailyMap, detailRows };
+      });
+
+      setBulkData(result);
+      setBulkOutputs({});
+      setBulkPushed({});
+      toast('Loaded '+Object.keys(result).length+' months of data!');
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  function onBulkFileChange(e) { var f=e.target.files[0]; if(f) parseBulkExcel(f); }
+
+  async function pushBulkMonth(month) {
+    var d = bulkData[month];
+    var output = parseFloat(bulkOutputs[month])||0;
+    if (!output) { toast('Please key in output for '+month); return; }
+    setBulkPushing(true);
+    var copperPerM2 = output>0 ? d.totalCopper/output : 0;
+    var ppPerM2     = output>0 ? d.totalPP/output : 0;
+    var totalPerM2  = output>0 ? d.totalRM/output : 0;
+    var ok1 = await saveMaterialHistory(month, {
+      outputM2: output, copperFoilRm: d.totalCopper, prepregRm: d.totalPP,
+      copperFoilRmPerM2: parseFloat(copperPerM2.toFixed(4)),
+      prepregRmPerM2:    parseFloat(ppPerM2.toFixed(4)),
+      totalRm:           d.totalRM,
+      totalRmPerM2:      parseFloat(totalPerM2.toFixed(4)),
+      dailyBreakdown:    d.dailyMap,
+    });
+    if (ok1) await saveMaterialDetail(month, d.detailRows);
+    setBulkPushed(function(prev){ return Object.assign({},prev,{[month]:ok1}); });
+    setBulkPushing(false);
+    if (ok1) toast('✅ Saved '+month);
+    else toast('❌ Error saving '+month);
+  }
+
+  async function pushAllBulk() {
+    if (!bulkData) return;
+    var months = Object.keys(bulkData).filter(function(m){ return !bulkPushed[m]; });
+    for (var i=0; i<months.length; i++) {
+      await pushBulkMonth(months[i]);
+    }
+    toast('All months pushed!');
+  }
 
   var outputNum       = parseFloat(outputM2)||0;
   var copperPerM2     = outputNum>0 ? data&&(data.totalCopper/outputNum) : 0;
@@ -239,6 +374,83 @@ export default function MaterialTrackerPage({ darkMode, toast, allDays }) {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Bulk upload */}
+          <div className="card" style={{marginBottom:12}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:500,color:'var(--text)'}}>📦 Bulk upload — multiple months</div>
+                <div style={{fontSize:11,color:'var(--text2)'}}>Upload one Excel with multiple months — system groups by month automatically</div>
+              </div>
+              <button className="btn-ghost" onClick={function(){setBulkMode(function(v){return !v;});setBulkData(null);setBulkOutputs({});setBulkPushed({});}}>
+                {bulkMode?'▲ Hide':'▼ Open bulk upload'}
+              </button>
+            </div>
+
+            {bulkMode && (
+              <div style={{marginTop:12}}>
+                {!bulkData ? (
+                  <div>
+                    <div style={{border:'2px dashed var(--border2)',borderRadius:10,padding:'30px',textAlign:'center',cursor:'pointer',background:'var(--bg3)'}}
+                      onClick={function(){document.getElementById('bulk-file-input').click();}}>
+                      <div style={{fontSize:28,marginBottom:8}}>📂</div>
+                      <div style={{fontSize:13,fontWeight:500,color:'var(--text)',marginBottom:4}}>Click to upload multi-month Excel</div>
+                      <div style={{fontSize:11,color:'var(--text2)'}}>One file with Jan–Mar or any multiple months</div>
+                      <input id="bulk-file-input" type="file" accept=".xlsx,.xls" style={{display:'none'}} onChange={onBulkFileChange} />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,flexWrap:'wrap',gap:8}}>
+                      <div style={{fontSize:12,color:'var(--text2)'}}>Found <strong>{Object.keys(bulkData).length} months</strong> of data</div>
+                      <div style={{display:'flex',gap:8}}>
+                        <button className="btn-ghost" onClick={function(){setBulkData(null);setBulkOutputs({});setBulkPushed({});}} style={{fontSize:11}}>Clear</button>
+                        <button className="btn-primary" onClick={pushAllBulk}
+                          disabled={bulkPushing||Object.keys(bulkData).every(function(m){return bulkPushed[m];})}
+                          style={{background:'#0F6E56',fontSize:11}}>
+                          {bulkPushing?'Pushing...':'→ Push all months'}
+                        </button>
+                      </div>
+                    </div>
+                    {Object.keys(bulkData).sort().map(function(month){
+                      var d = bulkData[month];
+                      var isPushed = bulkPushed[month];
+                      return (
+                        <div key={month} style={{padding:'10px 12px',borderRadius:8,marginBottom:8,
+                          border:'1px solid '+(isPushed?'#1D9E75':'var(--border)'),
+                          background:isPushed?'rgba(29,158,117,0.05)':'var(--bg3)'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                            <div style={{fontSize:13,fontWeight:600,color:'var(--text)',minWidth:80}}>{month}</div>
+                            <div style={{fontSize:11,color:'var(--text2)',flex:1}}>
+                              Copper: RM {d.totalCopper.toFixed(0)} · PP: RM {d.totalPP.toFixed(0)} · Total: RM {d.totalRM.toFixed(0)}
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:6}}>
+                              <input type="number" placeholder="Output m²"
+                                value={bulkOutputs[month]||''}
+                                onChange={function(e){setBulkOutputs(function(prev){return Object.assign({},prev,{[month]:e.target.value});});}}
+                                disabled={isPushed}
+                                style={{width:110,fontSize:11,padding:'4px 8px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                              {bulkOutputs[month] && !isPushed && (
+                                <span style={{fontSize:10,color:'#0F6E56'}}>
+                                  RM/m²: {(d.totalRM/(parseFloat(bulkOutputs[month])||1)).toFixed(4)}
+                                </span>
+                              )}
+                              <button className="btn-primary"
+                                onClick={function(){pushBulkMonth(month);}}
+                                disabled={bulkPushing||isPushed||!bulkOutputs[month]}
+                                style={{fontSize:10,padding:'4px 10px',background:isPushed?'#1D9E75':'#0F6E56',minWidth:80}}>
+                                {isPushed?'✓ Saved':'→ Push'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* KPI cards */}
