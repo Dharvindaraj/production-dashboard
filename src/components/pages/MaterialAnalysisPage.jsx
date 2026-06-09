@@ -139,6 +139,7 @@ export default function MaterialAnalysisPage({ darkMode }) {
     var summB = getProductSummary(detailB, matType);
     var outA  = sumMetric(periodA, 'output_m2');
     var outB  = sumMetric(periodB, 'output_m2');
+    console.log('calcImpact', matType, 'outA:', outA, 'outB:', outB, 'history:', history.length, 'summA:', summA.length, 'summB:', summB.length);
     if (!outA || !outB) return null;
 
     var totalAmtA = summA.reduce(function(s,p){return s+p.amountRm;},0);
@@ -298,7 +299,7 @@ export default function MaterialAnalysisPage({ darkMode }) {
               </div>
 
               {/* Price change tables */}
-              {[['Copper Foil',copperChanges,'#EF9F27'],['PP (Prepreg)',ppChanges,'#378ADD']].map(function(item){
+              {[['Copper Foil',copperChanges,'#EF9F27'],['PP',ppChanges,'#378ADD']].map(function(item){
                 var matName=item[0], changes=item[1], color=item[2];
                 if (!changes.length) return null;
                 return (
