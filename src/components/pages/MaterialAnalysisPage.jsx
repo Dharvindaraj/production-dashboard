@@ -134,6 +134,43 @@ export default function MaterialAnalysisPage({ darkMode }) {
     { label:'Total spend RM',a:sumMetric(periodA,'total_rm'),              b:sumMetric(periodB,'total_rm'),              color:'#E24B4A' },
   ] : [];
 
+  function calcImpact(matType) {
+    var summA = getProductSummary(detailA, matType);
+    var summB = getProductSummary(detailB, matType);
+    var outA  = sumMetric(periodA, 'output_m2');
+    var outB  = sumMetric(periodB, 'output_m2');
+    if (!outA || !outB) return null;
+
+    var totalAmtA = summA.reduce(function(s,p){return s+p.amountRm;},0);
+    var totalAmtB = summB.reduce(function(s,p){return s+p.amountRm;},0);
+    var totalQtyA = summA.reduce(function(s,p){return s+p.qty;},0);
+    var totalQtyB = summB.reduce(function(s,p){return s+p.qty;},0);
+    var avgPriceA = totalQtyA > 0 ? totalAmtA/totalQtyA : 0;
+    var avgPriceB = totalQtyB > 0 ? totalAmtB/totalQtyB : 0;
+
+    var rmPerM2A  = outA > 0 ? totalAmtA/outA : 0;
+    var rmPerM2B  = outB > 0 ? totalAmtB/outB : 0;
+    var totalChange = rmPerM2B - rmPerM2A;
+
+    // Price impact = (new price - old price) * old qty / output B
+    var priceImpact = outB > 0 ? (avgPriceB - avgPriceA) * totalQtyB / outB : 0;
+
+    // Quantity impact = old price * (new qty/output - old qty/output)
+    var qtyImpact = avgPriceA * ((totalQtyB/outB) - (totalQtyA/outA));
+
+    return {
+      rmPerM2A:     parseFloat(rmPerM2A.toFixed(4)),
+      rmPerM2B:     parseFloat(rmPerM2B.toFixed(4)),
+      totalChange:  parseFloat(totalChange.toFixed(4)),
+      priceImpact:  parseFloat(priceImpact.toFixed(4)),
+      qtyImpact:    parseFloat(qtyImpact.toFixed(4)),
+      avgPriceA:    parseFloat(avgPriceA.toFixed(4)),
+      avgPriceB:    parseFloat(avgPriceB.toFixed(4)),
+      totalQtyA, totalQtyB, outA, outB,
+      totalAmtA, totalAmtB,
+    };
+  }
+
   function sortedChanges(changes) {
     var key = sortConfig.key;
     var dir = sortConfig.dir;
@@ -272,6 +309,42 @@ export default function MaterialAnalysisPage({ darkMode }) {
                         <div className="card-sub">{labelA} vs {labelB} · {changes.length} products compared</div>
                       </div>
                     </div>
+                    {/* Impact analysis */}
+                    {(function(){
+                      var imp = calcImpact(matName);
+                      if (!imp) return null;
+                      return (
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:12}}>
+                          <div style={{padding:'10px 12px',background:'var(--bg3)',borderRadius:8,textAlign:'center'}}>
+                            <div style={{fontSize:10,color:'var(--text2)',marginBottom:4}}>RM/m² — {labelA}</div>
+                            <div style={{fontSize:16,fontWeight:600,color:'#378ADD'}}>RM {imp.rmPerM2A}</div>
+                          </div>
+                          <div style={{padding:'10px 12px',background:'var(--bg3)',borderRadius:8,textAlign:'center'}}>
+                            <div style={{fontSize:10,color:'var(--text2)',marginBottom:4}}>RM/m² — {labelB}</div>
+                            <div style={{fontSize:16,fontWeight:600,color:'#E24B4A'}}>RM {imp.rmPerM2B}</div>
+                          </div>
+                          <div style={{padding:'10px 12px',background:imp.priceImpact>0?'rgba(226,75,74,0.08)':'rgba(29,158,117,0.08)',borderRadius:8,textAlign:'center'}}>
+                            <div style={{fontSize:10,color:'var(--text2)',marginBottom:4}}>Due to price change</div>
+                            <div style={{fontSize:16,fontWeight:600,color:imp.priceImpact>0?'#E24B4A':'#1D9E75'}}>
+                              {imp.priceImpact>0?'+':''}{imp.priceImpact} RM/m²
+                            </div>
+                            <div style={{fontSize:9,color:'var(--text2)'}}>
+                              Avg price: RM{imp.avgPriceA} → RM{imp.avgPriceB}
+                            </div>
+                          </div>
+                          <div style={{padding:'10px 12px',background:imp.qtyImpact>0?'rgba(226,75,74,0.08)':'rgba(29,158,117,0.08)',borderRadius:8,textAlign:'center'}}>
+                            <div style={{fontSize:10,color:'var(--text2)',marginBottom:4}}>Due to quantity change</div>
+                            <div style={{fontSize:16,fontWeight:600,color:imp.qtyImpact>0?'#E24B4A':'#1D9E75'}}>
+                              {imp.qtyImpact>0?'+':''}{imp.qtyImpact} RM/m²
+                            </div>
+                            <div style={{fontSize:9,color:'var(--text2)'}}>
+                              Qty/m²: {(imp.totalQtyA/imp.outA).toFixed(4)} → {(imp.totalQtyB/imp.outB).toFixed(4)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Price increase alert */}
                     {changes.filter(function(c){return c.changePct>5;}).length > 0 && (
                       <div style={{padding:'8px 12px',background:'rgba(226,75,74,0.08)',border:'1px solid #E24B4A',borderRadius:7,marginBottom:10,fontSize:11,color:'#A32D2D'}}>
