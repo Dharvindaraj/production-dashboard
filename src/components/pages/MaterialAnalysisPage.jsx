@@ -75,19 +75,47 @@ export default function MaterialAnalysisPage({ darkMode }) {
     var summA = getProductSummary(detailA, matType);
     var summB = getProductSummary(detailB, matType);
     var result = [];
+
+    // Products in both periods
     summA.forEach(function(a) {
       var b = summB.find(function(x){ return x.name===a.name; });
-      if (!b) return;
-      var change = b.avgUnitPrice - a.avgUnitPrice;
-      var changePct = a.avgUnitPrice > 0 ? (change/a.avgUnitPrice*100) : 0;
-      result.push({ name:a.name, specs:a.specs, unit:a.unit,
-        priceA:a.avgUnitPrice, priceB:b.avgUnitPrice,
-        qtyA:a.qty, qtyB:b.qty,
-        amtA:a.amountRm, amtB:b.amountRm,
-        change:parseFloat(change.toFixed(4)),
-        changePct:parseFloat(changePct.toFixed(2)),
-      });
+      if (b) {
+        var change = b.avgUnitPrice - a.avgUnitPrice;
+        var changePct = a.avgUnitPrice > 0 ? (change/a.avgUnitPrice*100) : 0;
+        result.push({ name:a.name, specs:a.specs, unit:a.unit,
+          priceA:a.avgUnitPrice, priceB:b.avgUnitPrice,
+          qtyA:a.qty, qtyB:b.qty,
+          amtA:a.amountRm, amtB:b.amountRm,
+          change:parseFloat(change.toFixed(4)),
+          changePct:parseFloat(changePct.toFixed(2)),
+          status:'both',
+        });
+      } else {
+        // Only in Period A - disappeared
+        result.push({ name:a.name, specs:a.specs, unit:a.unit,
+          priceA:a.avgUnitPrice, priceB:0,
+          qtyA:a.qty, qtyB:0,
+          amtA:a.amountRm, amtB:0,
+          change:0, changePct:0,
+          status:'removed',
+        });
+      }
     });
+
+    // New products only in Period B
+    summB.forEach(function(b) {
+      var a = summA.find(function(x){ return x.name===b.name; });
+      if (!a) {
+        result.push({ name:b.name, specs:b.specs, unit:b.unit,
+          priceA:0, priceB:b.avgUnitPrice,
+          qtyA:0, qtyB:b.qty,
+          amtA:0, amtB:b.amountRm,
+          change:0, changePct:0,
+          status:'new',
+        });
+      }
+    });
+
     return result.sort(function(a,b){ return Math.abs(b.changePct)-Math.abs(a.changePct); });
   }
 
@@ -252,17 +280,23 @@ export default function MaterialAnalysisPage({ darkMode }) {
                             var priceDown = c.changePct < 0;
                             var qtyChange = c.qtyA > 0 ? ((c.qtyB-c.qtyA)/c.qtyA*100).toFixed(1) : 0;
                             return (
-                              <tr key={c.name} style={{background:c.changePct>5?'rgba(226,75,74,0.04)':c.changePct<-5?'rgba(29,158,117,0.04)':''}}>
-                                <td style={{fontWeight:500,fontSize:11,maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</td>
+                              <tr key={c.name} style={{background:c.status==='new'?'rgba(29,158,117,0.06)':c.status==='removed'?'rgba(128,128,128,0.06)':c.changePct>5?'rgba(226,75,74,0.04)':c.changePct<-5?'rgba(29,158,117,0.04)':''}}>
+                                <td style={{fontWeight:500,fontSize:11,maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                                  {c.name}
+                                  {c.status==='new' && <span className="pill pill-green" style={{marginLeft:4,fontSize:8}}>NEW</span>}
+                                  {c.status==='removed' && <span style={{marginLeft:4,fontSize:8,padding:'1px 5px',borderRadius:8,background:'#888',color:'#fff'}}>NOT IN B</span>}
+                                </td>
                                 <td style={{fontSize:10,color:'var(--text2)'}}>{c.specs}</td>
                                 <td style={{fontSize:10}}>{c.unit}</td>
-                                <td style={{fontSize:11,color:'#378ADD'}}>{c.priceA.toFixed(4)}</td>
-                                <td style={{fontSize:11,color:'#E24B4A'}}>{c.priceB.toFixed(4)}</td>
+                                <td style={{fontSize:11,color:'#378ADD'}}>{c.priceA>0?c.priceA.toFixed(4):'—'}</td>
+                                <td style={{fontSize:11,color:'#E24B4A'}}>{c.priceB>0?c.priceB.toFixed(4):'—'}</td>
                                 <td>
-                                  <span style={{fontSize:11,fontWeight:500,color:priceUp?'#E24B4A':priceDown?'#1D9E75':'var(--text2)'}}>
+                                  {c.status==='new' && <span style={{fontSize:11,color:'#1D9E75',fontWeight:500}}>🆕 New in B</span>}
+                                  {c.status==='removed' && <span style={{fontSize:11,color:'#888',fontWeight:500}}>❌ Not in B</span>}
+                                  {c.status==='both' && <span style={{fontSize:11,fontWeight:500,color:priceUp?'#E24B4A':priceDown?'#1D9E75':'var(--text2)'}}>
                                     {c.change>0?'+':''}{c.change.toFixed(4)} ({c.changePct>0?'+':''}{c.changePct}%)
                                     {c.changePct>5?' ⚠️':c.changePct<-5?' ✅':''}
-                                  </span>
+                                  </span>}
                                 </td>
                                 <td style={{fontSize:11}}>{c.qtyA.toFixed(2)}</td>
                                 <td style={{fontSize:11}}>{c.qtyB.toFixed(2)}</td>
