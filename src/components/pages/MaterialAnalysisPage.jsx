@@ -15,6 +15,7 @@ export default function MaterialAnalysisPage({ darkMode }) {
   const [loading, setLoading]       = useState(false);
   const [comparing, setComparing]   = useState(false);
   const [availMonths, setAvailMonths] = useState([]);
+  const [sortConfig, setSortConfig]   = useState({key:'amtA', dir:'desc'});
 
   const gridColor = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const tickColor = darkMode ? '#9499b0' : '#666';
@@ -132,6 +133,26 @@ export default function MaterialAnalysisPage({ darkMode }) {
     { label:'Output m²',     a:sumMetric(periodA,'output_m2'),             b:sumMetric(periodB,'output_m2'),             color:'#7F77DD' },
     { label:'Total spend RM',a:sumMetric(periodA,'total_rm'),              b:sumMetric(periodB,'total_rm'),              color:'#E24B4A' },
   ] : [];
+
+  function sortedChanges(changes) {
+    var key = sortConfig.key;
+    var dir = sortConfig.dir;
+    return changes.slice().sort(function(a,b){
+      var av = a[key]||0, bv = b[key]||0;
+      return dir==='desc' ? bv-av : av-bv;
+    });
+  }
+
+  function SortTh(props) {
+    var active = sortConfig.key === props.col;
+    return (
+      <th onClick={function(){setSortConfig(function(prev){
+        return {key:props.col, dir:prev.key===props.col&&prev.dir==='desc'?'asc':'desc'};
+      });}} style={{cursor:'pointer',userSelect:'none',whiteSpace:'nowrap'}}>
+        {props.label} {active?(sortConfig.dir==='desc'?'↓':'↑'):'↕'}
+      </th>
+    );
+  }
 
   function MonthSelector(props) {
     return (
@@ -264,18 +285,18 @@ export default function MaterialAnalysisPage({ darkMode }) {
                             <th>Product</th>
                             <th>Specs</th>
                             <th>Unit</th>
-                            <th>Price A (RM)</th>
-                            <th>Price B (RM)</th>
-                            <th>Price change</th>
-                            <th>Qty A</th>
-                            <th>Qty B</th>
+                            <SortTh col="priceA" label="Price A (RM)" />
+                            <SortTh col="priceB" label="Price B (RM)" />
+                            <SortTh col="changePct" label="Price change" />
+                            <SortTh col="qtyA" label="Qty A" />
+                            <SortTh col="qtyB" label="Qty B" />
                             <th>Qty change</th>
-                            <th>Spend A (RM)</th>
-                            <th>Spend B (RM)</th>
+                            <SortTh col="amtA" label="Spend A (RM)" />
+                            <SortTh col="amtB" label="Spend B (RM)" />
                           </tr>
                         </thead>
                         <tbody>
-                          {changes.map(function(c){
+                          {sortedChanges(changes).map(function(c){
                             var priceUp   = c.changePct > 0;
                             var priceDown = c.changePct < 0;
                             var qtyChange = c.qtyA > 0 ? ((c.qtyB-c.qtyA)/c.qtyA*100).toFixed(1) : 0;
