@@ -284,7 +284,11 @@ export default function MaterialTrackerPage({ darkMode, toast, allDays }) {
       dailyBreakdown:    data.dailyMap,
     });
     setPushing(false);
-    if (ok) { setPushed(true); toast('Saved to material history — '+month); }
+    if (ok) {
+      await saveMaterialDetail(month, data.detailRows || []);
+      setPushed(true);
+      toast('Saved to material history — '+month);
+    }
     else toast('Error saving');
   }
 
