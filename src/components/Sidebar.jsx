@@ -19,6 +19,7 @@ export default function Sidebar({ page, setPage, darkMode, setDarkMode }) {
     { section: 'Materials' },
     { key: 'mattracker', icon: 'ti-package',             label: 'Material tracker' },
     { key: 'mathist',    icon: 'ti-chart-bar',            label: 'Material history' },
+    { key: 'matanalysis', icon: 'ti-report-analytics',      label: 'Material analysis' },
     { section: 'Personal' },
     { key: 'personalot', icon: 'ti-user-clock',       label: 'My OT' },
     { section: 'Equipment' },

@@ -17,6 +17,7 @@ import ScrapPage from './components/pages/ScrapPage';
 import ScrapHistoryPage from './components/pages/ScrapHistoryPage';
 import MaterialTrackerPage from './components/pages/MaterialTrackerPage';
 import MaterialHistoryPage from './components/pages/MaterialHistoryPage';
+import MaterialAnalysisPage from './components/pages/MaterialAnalysisPage';
 import PressProfilePage from './components/pages/PressProfilePage';
 import EditModal from './components/EditModal';
 import { getAllDays } from './utils/storage';
@@ -89,6 +90,7 @@ export default function App() {
           {page === 'scraphist'  && <ScrapHistoryPage {...pageProps} />}
           {page === 'mattracker' && <MaterialTrackerPage {...pageProps} />}
           {page === 'mathist'    && <MaterialHistoryPage {...pageProps} />}
+          {page === 'matanalysis' && <MaterialAnalysisPage {...pageProps} />}
           {page === 'pressprofile' && <PressProfilePage {...pageProps} />}
         </div>
       </div>

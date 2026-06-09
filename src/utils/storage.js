@@ -360,3 +360,37 @@ export async function getMaterialHistory(from, to) {
   if (error || !data) return [];
   return data;
 }
+
+export async function saveMaterialDetail(month, rows) {
+  const { error: delError } = await supabase
+    .from('material_detail')
+    .delete()
+    .eq('report_month', month);
+  if (delError) return false;
+  if (!rows.length) return true;
+  const { error } = await supabase.from('material_detail').insert(rows.map(function(r) {
+    return {
+      report_month:   month,
+      material_type:  r.materialType,
+      product_no:     r.productNo,
+      product_name:   r.productName,
+      specs:          r.specs,
+      unit:           r.unit,
+      qty:            r.qty,
+      unit_price_rm:  r.unitPriceRm,
+      amount_rm:      r.amountRm,
+      issue_date:     r.issueDate,
+    };
+  }));
+  return !error;
+}
+
+export async function getMaterialDetail(months) {
+  const { data, error } = await supabase
+    .from('material_detail')
+    .select('*')
+    .in('report_month', months)
+    .order('issue_date', { ascending: true });
+  if (error || !data) return [];
+  return data;
+}

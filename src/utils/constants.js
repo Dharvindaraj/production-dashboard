@@ -55,6 +55,7 @@ export const PAGE_TITLES = {
   wip:        'WIP Tracker',
   mattracker: 'Material Tracker',
   mathist:    'Material History',
+  matanalysis: 'Material Analysis',
   pressprofile: 'Press Profile',
   scrap:      'Scrap Tracker',
   scraphist:  'Scrap History',
