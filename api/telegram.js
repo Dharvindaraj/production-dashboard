@@ -21,7 +21,7 @@ const STATION_MAP = {
 
 function fixDate(dateStr) {
   if (!dateStr) return dateStr;
-  // Handle D/MM/YYYY or DD/MM/YYYY -> YYYY-MM-DD
+  // Handle D/MM/YYYY or DD/MM/YYYY -> YYYY-MM-DD (Malaysia format)
   var m = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (m) {
     var day   = m[1].padStart(2,'0');
@@ -29,7 +29,24 @@ function fixDate(dateStr) {
     var year  = m[3];
     return year + '-' + month + '-' + day;
   }
+  // Handle YYYY-MM-DD but month and day might be swapped by AI
+  // If AI returned YYYY-MM-DD, check if month > 12 which means it swapped
+  var m2 = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m2) {
+    var y = m2[1], mo = parseInt(m2[2]), d = parseInt(m2[3]);
+    // If month > 12, AI swapped day and month - swap them back
+    if (mo > 12) {
+      return y + '-' + String(d).padStart(2,'0') + '-' + String(mo).padStart(2,'0');
+    }
+  }
   return dateStr;
+}
+
+function preFix(text) {
+  // Pre-convert all DD/MM/YYYY dates in message before sending to AI
+  return text.replace(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g, function(match, d, m, y) {
+    return y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
+  });
 }
 
 async function sendTelegram(chatId, text) {
@@ -240,7 +257,7 @@ export default async function handler(req, res) {
 
   try {
     await sendTelegram(chatId, '⏳ Reading your message...');
-    const extracted = await extractWithGroq(text);
+    const extracted = await extractWithGroq(preFix(text));
     const entries   = Array.isArray(extracted) ? extracted : [extracted];
 
     for (const entry of entries) {
