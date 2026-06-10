@@ -43,8 +43,8 @@ function fixDate(dateStr) {
 }
 
 function preFix(text) {
-  // Pre-convert all DD/MM/YYYY dates in message before sending to AI
-  return text.replace(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g, function(match, d, m, y) {
+  // Pre-convert all DD/MM/YYYY dates - handle WhatsApp bold (*date*) and plain text
+  return text.replace(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g, function(match, d, m, y) {
     return y + '-' + m.padStart(2,'0') + '-' + d.padStart(2,'0');
   });
 }
