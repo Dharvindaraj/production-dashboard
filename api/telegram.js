@@ -19,6 +19,19 @@ const STATION_MAP = {
   'ttst': 'TTST',
 };
 
+function fixDate(dateStr) {
+  if (!dateStr) return dateStr;
+  // Handle D/MM/YYYY or DD/MM/YYYY -> YYYY-MM-DD
+  var m = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    var day   = m[1].padStart(2,'0');
+    var month = m[2].padStart(2,'0');
+    var year  = m[3];
+    return year + '-' + month + '-' + day;
+  }
+  return dateStr;
+}
+
 async function sendTelegram(chatId, text) {
   await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -94,7 +107,7 @@ async function saveToSupabase(extracted) {
   const entries = Array.isArray(extracted) ? extracted : [extracted];
 
   for (const entry of entries) {
-    const date    = entry.date;
+    const date    = fixDate(entry.date);
     const shift   = entry.shift;
     const m2      = entry.m2 || 0;
     const boards  = entry.boards || 0;
