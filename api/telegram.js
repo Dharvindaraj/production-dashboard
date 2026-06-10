@@ -257,7 +257,10 @@ export default async function handler(req, res) {
 
   try {
     await sendTelegram(chatId, '⏳ Reading your message...');
-    const extracted = await extractWithGroq(preFix(text));
+    const fixedText = preFix(text);
+    console.log('PRE-FIXED TEXT:', fixedText.slice(0,100));
+    const extracted = await extractWithGroq(fixedText);
+    console.log('EXTRACTED:', JSON.stringify(extracted).slice(0,200));
     const entries   = Array.isArray(extracted) ? extracted : [extracted];
 
     for (const entry of entries) {
