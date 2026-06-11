@@ -49,18 +49,18 @@ export default function ScrapHistoryPage({ darkMode }) {
 
   const labels    = history.map(function(d){return d.report_date.slice(5);});
   const scrapPcts = history.map(function(d){return parseFloat(d.masslam_scrap_pct)||0;});
-  const avgScrap  = scrapPcts.length ? scrapPcts.reduce(function(a,b){return a+b;},0)/scrapPcts.length : 0;
+  const avgScrap  = scrapPcts.length ? parseFloat((scrapPcts.reduce(function(a,b){return a+b;},0)/scrapPcts.length).toFixed(2)) : 0;
   const maxScrap  = Math.max.apply(null, scrapPcts.concat([0]));
   const minScrap  = scrapPcts.length ? Math.min.apply(null, scrapPcts.filter(function(v){return v>0;})) : 0;
   const aboveTarget = scrapPcts.filter(function(v){return v>SCRAP_TARGET;}).length;
 
   const avgDefects = {
-    Dent:    history.length ? history.reduce(function(s,d){return s+(parseFloat(d.defect_dent)||0);},0)/history.length : 0,
-    Wrinkle: history.length ? history.reduce(function(s,d){return s+(parseFloat(d.defect_wrinkle)||0);},0)/history.length : 0,
-    Scratch: history.length ? history.reduce(function(s,d){return s+(parseFloat(d.defect_scratch)||0);},0)/history.length : 0,
-    Whitish: history.length ? history.reduce(function(s,d){return s+(parseFloat(d.defect_whitish)||0);},0)/history.length : 0,
-    Void:    history.length ? history.reduce(function(s,d){return s+(parseFloat(d.defect_void)||0);},0)/history.length : 0,
-    Others:  history.length ? history.reduce(function(s,d){return s+(parseFloat(d.defect_others)||0);},0)/history.length : 0,
+    Dent:    history.length ? parseFloat((history.reduce(function(s,d){return s+(parseFloat(d.defect_dent)||0);},0)/history.length).toFixed(2)) : 0,
+    Wrinkle: history.length ? parseFloat((history.reduce(function(s,d){return s+(parseFloat(d.defect_wrinkle)||0);},0)/history.length).toFixed(2)) : 0,
+    Scratch: history.length ? parseFloat((history.reduce(function(s,d){return s+(parseFloat(d.defect_scratch)||0);},0)/history.length).toFixed(2)) : 0,
+    Whitish: history.length ? parseFloat((history.reduce(function(s,d){return s+(parseFloat(d.defect_whitish)||0);},0)/history.length).toFixed(2)) : 0,
+    Void:    history.length ? parseFloat((history.reduce(function(s,d){return s+(parseFloat(d.defect_void)||0);},0)/history.length).toFixed(2)) : 0,
+    Others:  history.length ? parseFloat((history.reduce(function(s,d){return s+(parseFloat(d.defect_others)||0);},0)/history.length).toFixed(2)) : 0,
   };
 
   const allOthersMap = {};
@@ -96,7 +96,7 @@ export default function ScrapHistoryPage({ darkMode }) {
 
   const lineOpts = {
     responsive:true, maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return 'Scrap: '+ctx.parsed.y.toFixed(4)+'%';}}}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return 'Scrap: '+ctx.parsed.y.toFixed(2)+'%';}}}},
     scales:{
       x:{ticks:{font:{size:9},autoSkip:true,maxRotation:0,color:tickColor},grid:{display:false}},
       y:{ticks:{font:{size:9},callback:function(v){return v+'%';},color:tickColor},grid:{color:gridColor}}
@@ -140,21 +140,21 @@ export default function ScrapHistoryPage({ darkMode }) {
             <div className="kpi-card" style={{border:'2px solid #E24B4A'}}>
               <div className="kpi-icon" style={{background:'#FCEBEB',color:'#A32D2D'}}>📊</div>
               <div className="kpi-label">Avg scrap %</div>
-              <div className="kpi-val" style={{color:avgScrap>SCRAP_TARGET?'#E24B4A':'#1D9E75'}}>{avgScrap.toFixed(4)}%</div>
+              <div className="kpi-val" style={{color:avgScrap>SCRAP_TARGET?'#E24B4A':'#1D9E75'}}>{avgScrap.toFixed(2)}%</div>
               <div className="kpi-footer" style={{color:avgScrap>SCRAP_TARGET?'#E24B4A':'#3B6D11'}}>{avgScrap>SCRAP_TARGET?'Above':'Within'} {SCRAP_TARGET}% target</div>
               <div className="kpi-bar" style={{background:'#E24B4A'}} />
             </div>
             <div className="kpi-card">
               <div className="kpi-icon" style={{background:'#FCEBEB',color:'#A32D2D'}}>🔺</div>
               <div className="kpi-label">Worst day</div>
-              <div className="kpi-val" style={{color:'#E24B4A'}}>{maxScrap.toFixed(4)}%</div>
+              <div className="kpi-val" style={{color:'#E24B4A'}}>{maxScrap.toFixed(2)}%</div>
               <div className="kpi-footer text-muted">{history.find(function(d){return parseFloat(d.masslam_scrap_pct)===maxScrap;})?history.find(function(d){return parseFloat(d.masslam_scrap_pct)===maxScrap;}).report_date:''}</div>
               <div className="kpi-bar" style={{background:'#E24B4A'}} />
             </div>
             <div className="kpi-card">
               <div className="kpi-icon" style={{background:'#E1F5EE',color:'#0F6E56'}}>🔻</div>
               <div className="kpi-label">Best day</div>
-              <div className="kpi-val" style={{color:'#1D9E75'}}>{minScrap.toFixed(4)}%</div>
+              <div className="kpi-val" style={{color:'#1D9E75'}}>{minScrap.toFixed(2)}%</div>
               <div className="kpi-footer text-muted">{history.find(function(d){return parseFloat(d.masslam_scrap_pct)===minScrap;})?history.find(function(d){return parseFloat(d.masslam_scrap_pct)===minScrap;}).report_date:''}</div>
               <div className="kpi-bar" style={{background:'#1D9E75'}} />
             </div>
@@ -171,7 +171,7 @@ export default function ScrapHistoryPage({ darkMode }) {
             <div className="card-head">
               <div>
                 <div className="card-title">Masslam scrap % trend</div>
-                <div className="card-sub">Daily scrap % · Target: {SCRAP_TARGET}% · Avg: {avgScrap.toFixed(4)}%</div>
+                <div className="card-sub">Daily scrap % · Target: {SCRAP_TARGET}% · Avg: {avgScrap.toFixed(2)}%</div>
               </div>
             </div>
             <div className="legend-row">
@@ -209,7 +209,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                 showAvg && {label:'7-day avg',data:scrapPcts.map(function(_,i){
                   var start=Math.max(0,i-6);
                   var sl=scrapPcts.slice(start,i+1).filter(function(v){return v>0;});
-                  return sl.length?parseFloat((sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(4)):null;
+                  return sl.length?parseFloat((sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(2)):null;
                 }),borderColor:'#EF9F27',fill:false,tension:.4,pointRadius:0,borderWidth:2,spanGaps:true},
                 showTarget  && {label:'Target', data:labels.map(function(){return SCRAP_TARGET;}),borderColor:'#5DCAA5',borderDash:[5,4],fill:false,pointRadius:0,borderWidth:1.5},
                 showDent    && {label:'Dent',    data:history.map(function(d){return parseFloat(d.defect_dent)||0;}),   borderColor:'#378ADD',fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
@@ -236,7 +236,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                           <span style={{width:10,height:10,borderRadius:2,background:DEFECT_COLORS[name],flexShrink:0,display:'inline-block'}}></span>
                           {name}
                         </span>
-                        <span style={{fontWeight:500,color:DEFECT_COLORS[name]}}>{val.toFixed(4)}%</span>
+                        <span style={{fontWeight:500,color:DEFECT_COLORS[name]}}>{val.toFixed(2)}%</span>
                       </div>
                       <div style={{height:6,background:'var(--bg3)',borderRadius:3}}>
                         <div style={{height:'100%',width:maxV>0?(val/maxV*100).toFixed(1)+'%':'0%',background:DEFECT_COLORS[name],borderRadius:3}}></div>
@@ -254,7 +254,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                   data={{
                     labels:Object.keys(avgDefects),
                     datasets:[{
-                      data:Object.values(avgDefects).map(function(v){return parseFloat(v.toFixed(4));}),
+                      data:Object.values(avgDefects).map(function(v){return parseFloat(v.toFixed(2));}),
                       backgroundColor:Object.keys(avgDefects).map(function(k){return DEFECT_COLORS[k];}),
                       borderWidth:3,
                       borderColor: darkMode?'#1a1a1a':'#ffffff',
@@ -265,12 +265,12 @@ export default function ScrapHistoryPage({ darkMode }) {
                     responsive:true,maintainAspectRatio:false,cutout:'68%',
                     plugins:{
                       legend:{display:false},
-                      tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+ctx.parsed.toFixed(4)+'%';}}}
+                      tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+ctx.parsed.toFixed(2)+'%';}}}
                     }
                   }}
                 />
                 <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center',pointerEvents:'none'}}>
-                  <div style={{fontSize:15,fontWeight:600,color:'var(--text)',lineHeight:1}}>{avgScrap.toFixed(4)}%</div>
+                  <div style={{fontSize:15,fontWeight:600,color:'var(--text)',lineHeight:1}}>{avgScrap.toFixed(2)}%</div>
                   <div style={{fontSize:9,color:'var(--text2)',marginTop:2}}>Avg scrap</div>
                 </div>
               </div>
@@ -278,7 +278,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                 {Object.entries(avgDefects).sort(function(a,b){return b[1]-a[1];}).map(function(entry){
                   return (
                     <div key={entry[0]} style={{textAlign:'center',minWidth:50}}>
-                      <div style={{fontSize:10,fontWeight:600,color:DEFECT_COLORS[entry[0]]}}>{entry[1].toFixed(4)}%</div>
+                      <div style={{fontSize:10,fontWeight:600,color:DEFECT_COLORS[entry[0]]}}>{entry[1].toFixed(2)}%</div>
                       <div style={{fontSize:9,color:'var(--text2)',marginTop:1}}>{entry[0]}</div>
                     </div>
                   );
@@ -326,7 +326,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                             <span style={{width:8,height:8,borderRadius:2,background:color,flexShrink:0,display:'inline-block'}}></span>
                             {reason}
                           </span>
-                          <span style={{fontWeight:500,color:color}}>{area.toFixed(4)} m² ({pct}%)</span>
+                          <span style={{fontWeight:500,color:color}}>{area.toFixed(2)} m² ({pct}%)</span>
                         </div>
                         <div style={{height:5,background:'var(--bg3)',borderRadius:3}}>
                           <div style={{height:'100%',width:(area/maxArea*100).toFixed(1)+'%',background:color,borderRadius:3}}></div>
@@ -341,14 +341,14 @@ export default function ScrapHistoryPage({ darkMode }) {
                       labels: othersRanked.map(function(e){return e[0].length>15?e[0].slice(0,15)+'...':e[0];}),
                       datasets:[{
                         label:'Scrap area (m²)',
-                        data: othersRanked.map(function(e){return parseFloat(e[1].toFixed(4));}),
+                        data: othersRanked.map(function(e){return parseFloat(e[1].toFixed(2));}),
                         backgroundColor: ['#E24B4A','#EF9F27','#378ADD','#7F77DD','#5DCAA5','#FF6B9D','#888780','#97C459','#FF9F43','#54A0FF'],
                         borderRadius: 4,
                       }]
                     }}
                     options={{
                       responsive:true,maintainAspectRatio:false,
-                      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(4)+' m²';}}}},
+                      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y.toFixed(2)+' m²';}}}},
                       scales:{
                         x:{ticks:{font:{size:8},autoSkip:false,maxRotation:45,color:tickColor},grid:{display:false}},
                         y:{ticks:{font:{size:9},color:tickColor,callback:function(v){return v+' m²';}},grid:{color:gridColor}}
@@ -367,7 +367,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                 {Object.keys(DEFECT_COLORS).map(function(d){return <span key={d} className="leg"><span className="leg-dot" style={{background:DEFECT_COLORS[d]}}></span>{d}</span>;})}
               </div>
               <div style={{height:260}}>
-                <Bar data={{labels:rankedPns.map(function(r){return r.pn.length>15?r.pn.slice(0,15)+'...':r.pn;}),datasets:Object.keys(DEFECT_COLORS).map(function(def){return {label:def,data:rankedPns.map(function(r){return parseFloat((r.defects[def]||0).toFixed(4));}),backgroundColor:DEFECT_COLORS[def],stack:'s',borderRadius:2};})}}
+                <Bar data={{labels:rankedPns.map(function(r){return r.pn.length>15?r.pn.slice(0,15)+'...':r.pn;}),datasets:Object.keys(DEFECT_COLORS).map(function(def){return {label:def,data:rankedPns.map(function(r){return parseFloat((r.defects[def]||0).toFixed(2));}),backgroundColor:DEFECT_COLORS[def],stack:'s',borderRadius:2};})}}
                   options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{font:{size:9},autoSkip:false,maxRotation:45,color:tickColor},grid:{display:false}},y:{stacked:true,ticks:{font:{size:9},color:tickColor,callback:function(v){return v+' m²'}},grid:{color:gridColor}}}}} />
               </div>
               <div style={{marginTop:12}}>
@@ -383,7 +383,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                           <div style={{fontSize:10,color:'var(--text2)'}}>Top defect: <span style={{color:DEFECT_COLORS[topDef?topDef[0]:'Others'],fontWeight:500}}>{topDef?topDef[0]:'—'}</span> · {Object.keys(item.defects).length} types</div>
                         </div>
                         <div style={{textAlign:'right',flexShrink:0}}>
-                          <div style={{fontSize:13,fontWeight:500,color:'#E24B4A'}}>{item.totalArea.toFixed(4)} m²</div>
+                          <div style={{fontSize:13,fontWeight:500,color:'#E24B4A'}}>{item.totalArea.toFixed(2)} m²</div>
                         </div>
                         <div style={{width:70,flexShrink:0}}>
                           <div style={{height:6,background:'var(--bg3)',borderRadius:3}}>
@@ -408,7 +408,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                                     <strong>{de[0]}</strong>
                                   </span>
                                   <span style={{fontWeight:600,color:DEFECT_COLORS[de[0]]||'#888'}}>
-                                    {de[1].toFixed(4)} m² &nbsp;
+                                    {de[1].toFixed(2)} m² &nbsp;
                                     <span style={{fontWeight:400,color:'var(--text2)'}}>({(de[1]/item.totalArea*100).toFixed(1)}%)</span>
                                   </span>
                                 </div>
@@ -420,7 +420,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                           })}
                           <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--border)',display:'flex',justifyContent:'space-between',fontSize:11}}>
                             <span style={{color:'var(--text2)'}}>Total scrap area</span>
-                            <strong style={{color:'#E24B4A'}}>{item.totalArea.toFixed(4)} m²</strong>
+                            <strong style={{color:'#E24B4A'}}>{item.totalArea.toFixed(2)} m²</strong>
                           </div>
                         </div>
                       )}
@@ -459,13 +459,13 @@ export default function ScrapHistoryPage({ darkMode }) {
                         onClick={function(){setExpandedRow(isExpanded?null:d.report_date);}}>
                         <td style={{fontWeight:500}}>{d.report_date} {isExpanded?'▲':'▼'}</td>
                         <td>{parseFloat(d.output_m2).toLocaleString()}</td>
-                        <td style={{fontWeight:500,color:pct>SCRAP_TARGET?'#E24B4A':'#1D9E75'}}>{pct.toFixed(4)}%</td>
-                        <td style={{fontSize:11,color:'#378ADD'}}>{(parseFloat(d.defect_dent)||0).toFixed(4)}%</td>
-                        <td style={{fontSize:11,color:'#EF9F27'}}>{(parseFloat(d.defect_wrinkle)||0).toFixed(4)}%</td>
-                        <td style={{fontSize:11,color:'#E24B4A'}}>{(parseFloat(d.defect_scratch)||0).toFixed(4)}%</td>
-                        <td style={{fontSize:11,color:'#5DCAA5'}}>{(parseFloat(d.defect_whitish)||0).toFixed(4)}%</td>
-                        <td style={{fontSize:11,color:'#7F77DD'}}>{(parseFloat(d.defect_void)||0).toFixed(4)}%</td>
-                        <td style={{fontSize:11,color:'#888780'}}>{(parseFloat(d.defect_others)||0).toFixed(4)}%</td>
+                        <td style={{fontWeight:500,color:pct>SCRAP_TARGET?'#E24B4A':'#1D9E75'}}>{pct.toFixed(2)}%</td>
+                        <td style={{fontSize:11,color:'#378ADD'}}>{(parseFloat(d.defect_dent)||0).toFixed(2)}%</td>
+                        <td style={{fontSize:11,color:'#EF9F27'}}>{(parseFloat(d.defect_wrinkle)||0).toFixed(2)}%</td>
+                        <td style={{fontSize:11,color:'#E24B4A'}}>{(parseFloat(d.defect_scratch)||0).toFixed(2)}%</td>
+                        <td style={{fontSize:11,color:'#5DCAA5'}}>{(parseFloat(d.defect_whitish)||0).toFixed(2)}%</td>
+                        <td style={{fontSize:11,color:'#7F77DD'}}>{(parseFloat(d.defect_void)||0).toFixed(2)}%</td>
+                        <td style={{fontSize:11,color:'#888780'}}>{(parseFloat(d.defect_others)||0).toFixed(2)}%</td>
                         <td><span className={pct>SCRAP_TARGET?'pill pill-red':'pill pill-green'}>{pct>SCRAP_TARGET?'Above':'Within'}</span></td>
                       </tr>,
                       isExpanded && pnData.length > 0 && (
@@ -481,7 +481,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                                     onClick={function(){setExpandedPN(expandedPN===d.report_date+pn.pn?null:d.report_date+pn.pn);}}>
                                     <div style={{fontSize:11,fontWeight:500,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pn.pn}</div>
                                     <div style={{fontSize:9,color:'var(--text3)',marginTop:2}}>{expandedPN===d.report_date+pn.pn?'▲ hide':'▼ click for details'}</div>
-                                    <div style={{fontSize:10,color:'#E24B4A',fontWeight:500}}>{pn.totalArea.toFixed(4)} m²</div>
+                                    <div style={{fontSize:10,color:'#E24B4A',fontWeight:500}}>{pn.totalArea.toFixed(2)} m²</div>
                                     {topDef&&<div style={{fontSize:10,color:DEFECT_COLORS[topDef[0]]||'#888'}}>{topDef[0]}</div>}
                                     {expandedPN===d.report_date+pn.pn && pn.defects && (
                                       <div style={{marginTop:6,borderTop:'1px solid var(--border)',paddingTop:6}}>
@@ -491,7 +491,7 @@ export default function ScrapHistoryPage({ darkMode }) {
                                             <div key={de[0]} style={{marginBottom:4}}>
                                               <div style={{display:'flex',justifyContent:'space-between',fontSize:9,marginBottom:1}}>
                                                 <span style={{color:DEFECT_COLORS[de[0]]||'#888'}}>{de[0]}</span>
-                                                <span style={{fontWeight:500,color:DEFECT_COLORS[de[0]]||'#888'}}>{de[1].toFixed(4)} m²</span>
+                                                <span style={{fontWeight:500,color:DEFECT_COLORS[de[0]]||'#888'}}>{de[1].toFixed(2)} m²</span>
                                               </div>
                                               <div style={{height:3,background:'var(--bg3)',borderRadius:2}}>
                                                 <div style={{height:'100%',width:(de[1]/maxDef*100).toFixed(1)+'%',background:DEFECT_COLORS[de[0]]||'#888',borderRadius:2}}></div>

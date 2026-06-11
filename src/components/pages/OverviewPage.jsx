@@ -38,7 +38,7 @@ export default function OverviewPage({ allDays, darkMode }) {
       plugins: { legend: { display: false } },
       scales: {
         x: { ticks: { font: { size: 9 }, autoSkip: true, maxRotation: 0, color: tickColor }, grid: { display: false } },
-        y: { ticks: { font: { size: 9 }, callback: function(v) { return v + suffix; }, color: tickColor }, grid: { color: gridColor } }
+        y: { ticks: { font: { size: 9 }, callback: function(v) { return parseFloat(parseFloat(v).toFixed(2)) + suffix; }, color: tickColor }, grid: { color: gridColor } }
       }
     };
   }
@@ -106,9 +106,9 @@ export default function OverviewPage({ allDays, darkMode }) {
     avgDefs[n] = vs.length ? vs.reduce(function(a,b){return a+b;},0)/vs.length : 0;
   });
 
-  const aoiDentAvg    = filtered.length ? filtered.reduce(function(s,x){return s+(parseFloat(x.data.dent)||0);},0)/filtered.length : 0;
-  const aoiScratchAvg = filtered.length ? filtered.reduce(function(s,x){return s+(parseFloat(x.data.scratch)||0);},0)/filtered.length : 0;
-  const aoiWrinkleAvg = filtered.length ? filtered.reduce(function(s,x){return s+(parseFloat(x.data.wrinkle)||0);},0)/filtered.length : 0;
+  const aoiDentAvg    = filtered.length ? parseFloat((filtered.reduce(function(s,x){return s+(parseFloat(x.data.dent)||0);},0)/filtered.length).toFixed(3)) : 0;
+  const aoiScratchAvg = filtered.length ? parseFloat((filtered.reduce(function(s,x){return s+(parseFloat(x.data.scratch)||0);},0)/filtered.length).toFixed(3)) : 0;
+  const aoiWrinkleAvg = filtered.length ? parseFloat((filtered.reduce(function(s,x){return s+(parseFloat(x.data.wrinkle)||0);},0)/filtered.length).toFixed(3)) : 0;
   const aoiVals = [aoiDentAvg, aoiScratchAvg, aoiWrinkleAvg];
 
   var STN_NAMES_ORD = ['Oxide','Glicap','Baking','Rivet','Setup','Preparation','Pulse bonding','CCD Welding','Layup 1','Layup 2','Vigor press','Buckle press','Routing 1','Routing 2','Xray 1','Xray 2','TTST'];
@@ -197,7 +197,7 @@ export default function OverviewPage({ allDays, darkMode }) {
     const start=Math.max(0,i-6);
     const sl=scraps.slice(start,i+1).filter(function(v){return v!==null&&v>0;});
     if (!sl.length) return null;
-    return parseFloat((sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(3));
+    return parseFloat((sl.reduce(function(a,b){return a+b;},0)/sl.length).toFixed(2));
   });
 
   const cumOut = outs.map(function(_,i){return outs.slice(0,i+1).reduce(function(a,b){return a+(b||0);},0);});
@@ -229,10 +229,14 @@ export default function OverviewPage({ allDays, darkMode }) {
     return '#0F6E56';
   }
 
+  var aoiOpts = {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+    x:{ticks:{font:{size:9},autoSkip:true,maxRotation:0,color:tickColor},grid:{display:false}},
+    y:{ticks:{font:{size:9},callback:function(v){return parseFloat(v.toFixed(3))+'%';},color:tickColor},grid:{color:gridColor}}
+  }};
   const aoiTrendData={labels,datasets:[
-    {label:'Dent',   data:filtered.map(function(x,i){return (noProductionDays[i]||!x.data.dent)?null:x.data.dent;}),   borderColor:'#378ADD',fill:true,tension:.3,pointRadius:2,spanGaps:true},
-    {label:'Scratch',data:filtered.map(function(x,i){return (noProductionDays[i]||!x.data.scratch)?null:x.data.scratch;}),borderColor:'#EF9F27',fill:true,tension:.3,pointRadius:2,spanGaps:true},
-    {label:'Wrinkle',data:filtered.map(function(x,i){return (noProductionDays[i]||!x.data.wrinkle)?null:x.data.wrinkle;}),borderColor:'#E24B4A',fill:true,tension:.3,pointRadius:2,spanGaps:true},
+    {label:'Dent',   data:filtered.map(function(x,i){return (noProductionDays[i]||!x.data.dent)?null:parseFloat(parseFloat(x.data.dent).toFixed(3));}),   borderColor:'#378ADD',fill:true,tension:.3,pointRadius:2,spanGaps:true},
+    {label:'Scratch',data:filtered.map(function(x,i){return (noProductionDays[i]||!x.data.scratch)?null:parseFloat(parseFloat(x.data.scratch).toFixed(3));}),borderColor:'#EF9F27',fill:true,tension:.3,pointRadius:2,spanGaps:true},
+    {label:'Wrinkle',data:filtered.map(function(x,i){return (noProductionDays[i]||!x.data.wrinkle)?null:parseFloat(parseFloat(x.data.wrinkle).toFixed(3));}),borderColor:'#E24B4A',fill:true,tension:.3,pointRadius:2,spanGaps:true},
   ]};
 
   const scatterData={datasets:[{
@@ -294,7 +298,7 @@ export default function OverviewPage({ allDays, darkMode }) {
 
   const scrapsForChart = scraps.map(function(v,i){
     if (noProductionDays[i]) return null;
-    return v || null;
+    return v ? parseFloat(parseFloat(v).toFixed(2)) : null;
   });
   const outsForChart = outs.map(function(v,i){
     if (noProductionDays[i]) return null;
@@ -440,7 +444,7 @@ export default function OverviewPage({ allDays, darkMode }) {
             <span className="leg"><span className="leg-dot" style={{background:'#EF9F27'}}></span>Scratch</span>
             <span className="leg"><span className="leg-dot" style={{background:'#E24B4A'}}></span>Wrinkle</span>
           </div>
-          <GradientLine id="ov-aoi-trend" height={170} data={aoiTrendData} options={lineOpts('%')} />
+          <GradientLine id="ov-aoi-trend" height={170} data={aoiTrendData} options={aoiOpts} />
         </div>
       </div>
 
