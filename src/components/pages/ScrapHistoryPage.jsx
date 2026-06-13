@@ -49,7 +49,12 @@ export default function ScrapHistoryPage({ darkMode }) {
 
   const labels    = history.map(function(d){return d.report_date.slice(5);});
   const scrapPcts = history.map(function(d){return parseFloat(d.masslam_scrap_pct)||0;});
-  const avgScrap  = scrapPcts.length ? parseFloat((scrapPcts.reduce(function(a,b){return a+b;},0)/scrapPcts.length).toFixed(2)) : 0;
+  const totalOutput       = history.reduce(function(s,d){return s+(parseFloat(d.output_m2)||0);},0);
+  const totalMasslamScrap = history.reduce(function(s,d){return s+(parseFloat(d.masslam_scrap_area)||0);},0);
+  const totalGrandScrap   = history.reduce(function(s,d){return s+(parseFloat(d.grand_total_scrap)||0);},0);
+  const avgScrap = (totalGrandScrap + totalOutput) > 0
+    ? parseFloat((totalMasslamScrap / (totalGrandScrap + totalOutput) * 100).toFixed(2))
+    : scrapPcts.length ? parseFloat((scrapPcts.reduce(function(a,b){return a+b;},0)/scrapPcts.length).toFixed(2)) : 0;
   const maxScrap  = Math.max.apply(null, scrapPcts.concat([0]));
   const minScrap  = scrapPcts.length ? Math.min.apply(null, scrapPcts.filter(function(v){return v>0;})) : 0;
   const aboveTarget = scrapPcts.filter(function(v){return v>SCRAP_TARGET;}).length;
