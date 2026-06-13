@@ -579,6 +579,12 @@ export default function ScrapPage({ darkMode, toast }) {
                   style={{background:pushed?'#1D9E75':pushing?'#888':'#185FA5',minWidth:160}}>
                   {pushed?'✓ Pushed!':pushing?'Pushing...':'→ Push to '+(customPushDate&&pushDate?pushDate:daysAgo(1))}
                 </button>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                  <label style={{fontSize:11,color:'var(--text2)'}}>Date:</label>
+                  <input type="date" value={mainPushDate}
+                    onChange={function(e){setMainPushDate(e.target.value);setPushedMain(false);}}
+                    style={{fontSize:11,padding:'4px 8px',border:'1px solid var(--border2)',borderRadius:6,background:'var(--input-bg)',color:'var(--text)',outline:'none'}} />
+                </div>
                 <button className="btn-primary" onClick={pushToMain}
                   disabled={pushingMain||pushedMain||!outputM2}
                   style={{background:pushedMain?'#1D9E75':pushingMain?'#888':'#A32D2D',minWidth:160}}>
