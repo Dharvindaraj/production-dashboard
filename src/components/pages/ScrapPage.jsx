@@ -449,8 +449,8 @@ export default function ScrapPage({ darkMode, toast }) {
     if (!data)     { toast('No data loaded'); return; }
     setPushing(true);
 
-    var yesterday = daysAgo(1);
-    var existing  = await storageGet('day:' + yesterday);
+    var targetDate = customPushDate && pushDate ? pushDate : daysAgo(1);
+    var existing  = await storageGet('day:' + targetDate);
 
     var defPct = {};
     Object.entries(data.myDefects).forEach(function(entry) {
@@ -458,20 +458,20 @@ export default function ScrapPage({ darkMode, toast }) {
     });
 
     var defectsObj = {
-      Dent:    parseFloat((defPct['Dent']   ||0).toFixed(4)),
-      Wrinkle: parseFloat((defPct['Wrinkle']||0).toFixed(4)),
-      Scratch: parseFloat((defPct['Scratch']||0).toFixed(4)),
-      Whitish: parseFloat((defPct['Whitish']||0).toFixed(4)),
-      Void:    parseFloat((defPct['Void']   ||0).toFixed(4)),
-      Others:  parseFloat((defPct['Others'] ||0).toFixed(4)),
+      Dent:    parseFloat((defPct['Dent']   ||0).toFixed(2)),
+      Wrinkle: parseFloat((defPct['Wrinkle']||0).toFixed(2)),
+      Scratch: parseFloat((defPct['Scratch']||0).toFixed(2)),
+      Whitish: parseFloat((defPct['Whitish']||0).toFixed(2)),
+      Void:    parseFloat((defPct['Void']   ||0).toFixed(2)),
+      Others:  parseFloat((defPct['Others'] ||0).toFixed(2)),
     };
 
     var updated = Object.assign({}, existing || {}, {
-      scrap:   parseFloat(totalScrapPct.toFixed(4)),
+      scrap:   parseFloat(totalScrapPct.toFixed(2)),
       defects: defectsObj,
     });
 
-    var ok = await storageSet('day:' + yesterday, updated);
+    var ok = await storageSet('day:' + targetDate, updated);
     setPushing(false);
     if (ok) { setPushed(true); toast('Pushed to ' + yesterday + ' daily entry!'); setCustomPushDate(false); setPushDate(''); }
     else toast('Error pushing data');
