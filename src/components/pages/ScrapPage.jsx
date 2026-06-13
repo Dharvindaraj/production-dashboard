@@ -46,8 +46,9 @@ export default function ScrapPage({ darkMode, toast }) {
   const [pushDate, setPushDate]       = useState('');
   const [pushingMain, setPushingMain] = useState(false);
   const [pushedMain, setPushedMain]   = useState(false);
-  const [fileDate, setFileDate]   = useState('');
-  const [manualDate, setManualDate] = useState(daysAgo(1));
+  const [fileDate, setFileDate]     = useState('');
+  const [manualDate, setManualDate]   = useState(daysAgo(1));
+  const [mainPushDate, setMainPushDate] = useState(daysAgo(1));
   const [dragging, setDragging] = useState(false);
   const [sortCol, setSortCol]   = useState('scrapArea');
   const [sortDir, setSortDir]   = useState('desc');
@@ -422,7 +423,7 @@ export default function ScrapPage({ darkMode, toast }) {
       pnMap[key].defects[cat] += r.scrapArea;
     });
 
-    var pushDate = fileDate || manualDate;
+    var pushDate = fileDate || mainPushDate;
     const ok = await saveScrapHistory(pushDate, {
       outputM2:          parseFloat(outputM2),
       grandTotalScrap:   data.grandTotalScrapArea,
@@ -440,7 +441,7 @@ export default function ScrapPage({ darkMode, toast }) {
     });
 
     setPushingMain(false);
-    if (ok) { setPushedMain(true); toast('Saved to scrap history — ' + (fileDate||manualDate)); }
+    if (ok) { setPushedMain(true); toast('Saved to scrap history — ' + pushDate); }
     else toast('Error saving to history');
   }
 
@@ -581,7 +582,7 @@ export default function ScrapPage({ darkMode, toast }) {
                 <button className="btn-primary" onClick={pushToMain}
                   disabled={pushingMain||pushedMain||!outputM2}
                   style={{background:pushedMain?'#1D9E75':pushingMain?'#888':'#A32D2D',minWidth:160}}>
-                  {pushedMain?'✓ Saved to history!':pushingMain?'Saving...':'→ Push to main history'}
+                  {pushedMain?'✓ Saved to history!':pushingMain?'Saving...':'→ Push to main history · '+mainPushDate}
                 </button>
               </div>
               </div>
